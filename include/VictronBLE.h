@@ -13,7 +13,9 @@ enum VictronDeviceType {
     DEVICE_UNKNOWN = 0,
     DEVICE_SMART_SHUNT = 1,
     DEVICE_SMART_SOLAR = 2,
-    DEVICE_BLUE_SMART_CHARGER = 3
+    DEVICE_BLUE_SMART_CHARGER = 3,
+    DEVICE_INVERTER = 4,
+    DEVICE_DCDC_CONVERTER = 5
 };
 
 // Record Types from Victron BLE advertising
@@ -33,7 +35,15 @@ enum VictronRecordType {
     CONSUMED_AH = 0x0D,         // Amp hours consumed
     TIME_TO_GO = 0x0E,
     ALARM = 0x0F,
-    RELAY_STATE = 0x10
+    RELAY_STATE = 0x10,
+    // Inverter specific records
+    AC_OUT_VOLTAGE = 0x11,      // AC output voltage
+    AC_OUT_CURRENT = 0x12,      // AC output current
+    AC_OUT_POWER = 0x13,        // AC output power
+    // DC-DC Converter specific records
+    INPUT_VOLTAGE = 0x14,       // DC-DC input voltage
+    OUTPUT_VOLTAGE = 0x15,      // DC-DC output voltage
+    OFF_REASON = 0x16           // Device off reason
 };
 
 // Victron Device Data Structure
@@ -52,9 +62,19 @@ struct VictronDeviceData {
     float consumedAh;           // Ah
     int timeToGo;               // minutes
     
+    // Inverter specific
+    float acOutVoltage;         // V
+    float acOutCurrent;         // A
+    float acOutPower;           // W
+    
+    // DC-DC Converter specific
+    float inputVoltage;         // V
+    float outputVoltage;        // V
+    
     // States
     int deviceState;
     int alarmState;
+    int offReason;
     
     unsigned long lastUpdate;
     bool dataValid;
@@ -65,6 +85,9 @@ struct VictronDeviceData {
     bool hasPower;
     bool hasSOC;
     bool hasTemperature;
+    bool hasAcOut;
+    bool hasInputVoltage;
+    bool hasOutputVoltage;
     
     VictronDeviceData() : 
         type(DEVICE_UNKNOWN), 
@@ -76,15 +99,24 @@ struct VictronDeviceData {
         temperature(-273.15),  // Below absolute zero = unavailable
         consumedAh(0),
         timeToGo(0),
+        acOutVoltage(0),
+        acOutCurrent(0),
+        acOutPower(0),
+        inputVoltage(0),
+        outputVoltage(0),
         deviceState(0),
         alarmState(0),
+        offReason(0),
         lastUpdate(0), 
         dataValid(false),
         hasVoltage(false),
         hasCurrent(false),
         hasPower(false),
         hasSOC(false),
-        hasTemperature(false) {}
+        hasTemperature(false),
+        hasAcOut(false),
+        hasInputVoltage(false),
+        hasOutputVoltage(false) {}
 };
 
 class VictronBLE {

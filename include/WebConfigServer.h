@@ -51,13 +51,23 @@ private:
     
     // Request handlers
     void handleRoot(AsyncWebServerRequest *request);
+    void handleMonitor(AsyncWebServerRequest *request);
     void handleGetDevices(AsyncWebServerRequest *request);
+    void handleGetLiveData(AsyncWebServerRequest *request);
     void handleAddDevice(AsyncWebServerRequest *request);
     void handleUpdateDevice(AsyncWebServerRequest *request);
     void handleDeleteDevice(AsyncWebServerRequest *request);
     void handleGetWiFiConfig(AsyncWebServerRequest *request);
     void handleSetWiFiConfig(AsyncWebServerRequest *request);
+    void handleGetMQTTConfig(AsyncWebServerRequest *request);
+    void handleSetMQTTConfig(AsyncWebServerRequest *request);
     void handleRestart(AsyncWebServerRequest *request);
+    
+    // Pointer to VictronBLE instance for live data
+    class VictronBLE* victronBLE;
+    
+    // Pointer to MQTTPublisher instance for MQTT config
+    class MQTTPublisher* mqttPublisher;
     
 public:
     WebConfigServer();
@@ -66,6 +76,12 @@ public:
     void begin();
     void startWiFi();
     void startServer();
+    
+    // Set VictronBLE instance for live data
+    void setVictronBLE(class VictronBLE* vble);
+    
+    // Set MQTTPublisher instance for MQTT config
+    void setMQTTPublisher(class MQTTPublisher* mqtt);
     
     // Device configuration access
     std::vector<DeviceConfig>& getDeviceConfigs();

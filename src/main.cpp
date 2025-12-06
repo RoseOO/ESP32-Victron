@@ -1,9 +1,11 @@
 #include <M5StickCPlus.h>
 #include "VictronBLE.h"
 #include "WebConfigServer.h"
+#include "MQTTPublisher.h"
 
 VictronBLE victron;
 WebConfigServer webServer;
+MQTTPublisher mqttPublisher;
 std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
@@ -42,6 +44,15 @@ void setup() {
     M5.Lcd.println("Starting WiFi...");
     webServer.begin();
     
+    // Set VictronBLE instance for live data in web interface
+    webServer.setVictronBLE(&victron);
+    
+    // Initialize MQTT Publisher
+    M5.Lcd.setCursor(10, 75);
+    M5.Lcd.println("Initializing MQTT...");
+    mqttPublisher.begin(&victron);
+    webServer.setMQTTPublisher(&mqttPublisher);
+    
     // Load device configurations and apply encryption keys
     auto& configs = webServer.getDeviceConfigs();
     for (auto& config : configs) {
@@ -52,7 +63,7 @@ void setup() {
     }
     
     // Initialize Victron BLE
-    M5.Lcd.setCursor(10, 80);
+    M5.Lcd.setCursor(10, 90);
     M5.Lcd.println("Starting BLE...");
     victron.begin();
     
@@ -223,6 +234,12 @@ void drawDisplay() {
         case DEVICE_BLUE_SMART_CHARGER:
             M5.Lcd.print("Blue Smart Charger");
             break;
+        case DEVICE_INVERTER:
+            M5.Lcd.print("Inverter");
+            break;
+        case DEVICE_DCDC_CONVERTER:
+            M5.Lcd.print("DC-DC Converter");
+            break;
         default:
             M5.Lcd.print("Victron Device");
             break;
@@ -309,6 +326,48 @@ void drawDisplay() {
         y += 15;
     }
     
+    // Inverter AC Output
+    if (device->hasAcOut) {
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("AC Out:");
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(80, y);
+        M5.Lcd.printf("%.1f V", device->acOutVoltage);
+        y += 15;
+        
+        if (device->acOutCurrent != 0 || device->acOutPower != 0) {
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("AC Pwr:");
+            M5.Lcd.setTextColor(WHITE, BLACK);
+            M5.Lcd.setCursor(80, y);
+            M5.Lcd.printf("%.0f W", device->acOutPower);
+            y += 15;
+        }
+    }
+    
+    // DC-DC Converter voltages
+    if (device->hasInputVoltage) {
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("In:");
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(80, y);
+        M5.Lcd.printf("%.2f V", device->inputVoltage);
+        y += 15;
+    }
+    
+    if (device->hasOutputVoltage) {
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("Out:");
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(80, y);
+        M5.Lcd.printf("%.2f V", device->outputVoltage);
+        y += 15;
+    }
+    
     // Draw bottom instructions
     M5.Lcd.drawLine(0, 110, 240, 110, DARKGREY);
     M5.Lcd.setTextSize(1);
@@ -379,6 +438,9 @@ void loop() {
         }
         lastDisplayUpdate = currentTime;
     }
+    
+    // Handle MQTT publishing
+    mqttPublisher.loop();
     
     delay(10);
 }
