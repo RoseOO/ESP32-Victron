@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-06
+
+### Added
+- **Web Configuration Interface**: Complete web-based configuration system
+  - WiFi Access Point mode (default) and Station mode
+  - User-friendly HTML/CSS/JavaScript interface
+  - Add, edit, and delete Victron devices
+  - Store device names and BLE MAC addresses
+  - Configure and store encryption keys for devices
+  - Persistent configuration using ESP32 Preferences
+- **Encryption Key Support**: Infrastructure for handling encrypted Victron devices
+  - Store 128-bit AES encryption keys (32 hex characters)
+  - Encryption key storage and retrieval per device
+  - Placeholder for AES-128-CTR decryption (to be fully implemented)
+- **WiFi Connectivity**: 
+  - AsyncWebServer for handling HTTP requests
+  - AsyncTCP library for async network operations
+  - Configurable WiFi SSID and password
+  - Automatic fallback to AP mode if WiFi connection fails
+- **Display Enhancements**:
+  - WiFi status and IP address display on screen
+  - Toggle between monitor mode and config info display
+  - Web config accessible via long-press M5 button
+- **Documentation**:
+  - Complete Web Configuration Guide
+  - API reference for web endpoints
+  - Troubleshooting section for web interface
+  - Security considerations
+
+### Changed
+- Updated platformio.ini to include ESPAsyncWebServer and AsyncTCP libraries
+- Modified main.cpp to integrate web server initialization
+- Enhanced VictronBLE class with encryption key management methods
+- Updated README with web configuration features
+
+### Technical Details
+- RESTful API endpoints for device and WiFi configuration
+- JSON responses for all API calls
+- Responsive web design with modern CSS
+- Persistent storage using ESP32 Preferences library
+- Modular WebConfigServer class for clean separation
+
+### Known Limitations
+- Full AES-128-CTR decryption not yet implemented (infrastructure in place)
+- Web interface uses HTTP (not HTTPS)
+- No authentication/login system (planned for future release)
+- Encryption currently requires "Instant Readout" mode on devices
+
 ## [1.0.0] - 2025-12-06
 
 ### Added
@@ -54,10 +102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned Features
-- WiFi connectivity and MQTT publishing
+- Full AES-128-CTR decryption implementation for encrypted devices
+- MQTT publishing for home automation integration
 - Data logging to SD card
 - Historical data graphs
-- Configuration menu on device
+- HTTPS support for web interface
+- Authentication/login system for web interface
+- OTA (Over-The-Air) firmware updates via web interface
+- Real-time data viewing in web interface
 - Battery low alarm functionality
 - OTA (Over-The-Air) firmware updates
 - Support for additional Victron devices (Inverters, DC-DC converters)

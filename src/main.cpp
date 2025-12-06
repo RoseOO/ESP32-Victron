@@ -1,15 +1,20 @@
 #include <M5StickCPlus.h>
 #include "VictronBLE.h"
+#include "WebConfigServer.h"
 
 VictronBLE victron;
+WebConfigServer webServer;
 std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
+unsigned long lastButtonPressTime = 0;  // For debouncing
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
+const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 
 bool scanning = false;
+bool webConfigMode = false;  // Toggle between normal mode and web config display
 
 void setup() {
     // Initialize M5StickC PLUS
@@ -32,14 +37,72 @@ void setup() {
     M5.Lcd.setTextSize(1);
     M5.Lcd.println("Initializing...");
     
+    // Initialize Web Configuration Server
+    M5.Lcd.setCursor(10, 65);
+    M5.Lcd.println("Starting WiFi...");
+    webServer.begin();
+    
+    // Load device configurations and apply encryption keys
+    auto& configs = webServer.getDeviceConfigs();
+    for (auto& config : configs) {
+        if (!config.encryptionKey.isEmpty()) {
+            victron.setEncryptionKey(config.address, config.encryptionKey);
+            Serial.printf("Loaded encryption key for %s\n", config.address.c_str());
+        }
+    }
+    
     // Initialize Victron BLE
+    M5.Lcd.setCursor(10, 80);
+    M5.Lcd.println("Starting BLE...");
     victron.begin();
     
     delay(1000);
     
+    // Show web interface info
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setCursor(5, 10);
+    M5.Lcd.setTextColor(CYAN, BLACK);
+    M5.Lcd.println("Web Config Available!");
+    M5.Lcd.setTextColor(WHITE, BLACK);
+    M5.Lcd.setCursor(5, 28);
+    
+    if (webServer.isAPMode()) {
+        M5.Lcd.println("WiFi: Victron-Config");
+        M5.Lcd.setCursor(5, 43);
+        M5.Lcd.print("IP: ");
+        M5.Lcd.println(webServer.getIPAddress());
+    } else {
+        M5.Lcd.println("WiFi: Connected");
+        M5.Lcd.setCursor(5, 43);
+        M5.Lcd.print("IP: ");
+        M5.Lcd.println(webServer.getIPAddress());
+    }
+    
+    M5.Lcd.setCursor(5, 60);
+    M5.Lcd.setTextColor(YELLOW, BLACK);
+    M5.Lcd.println("Open in browser to");
+    M5.Lcd.setCursor(5, 75);
+    M5.Lcd.println("configure devices");
+    
+    M5.Lcd.setCursor(5, 100);
+    M5.Lcd.setTextColor(DARKGREY, BLACK);
+    M5.Lcd.println("Hold M5 to continue...");
+    
+    // Wait for button press or timeout
+    unsigned long waitStart = millis();
+    while (millis() - waitStart < 5000) {
+        M5.update();
+        if (M5.BtnA.wasPressed()) {
+            break;
+        }
+        delay(50);  // Reduced delay for better responsiveness
+    }
+    
     // Initial scan
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setCursor(10, 20);
+    M5.Lcd.setTextColor(WHITE, BLACK);
     M5.Lcd.println("Scanning for");
     M5.Lcd.setCursor(10, 35);
     M5.Lcd.println("Victron devices...");
@@ -66,6 +129,9 @@ void setup() {
         M5.Lcd.println("- BLE is enabled");
         M5.Lcd.setCursor(10, 81);
         M5.Lcd.println("- In range");
+        M5.Lcd.setCursor(10, 96);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.println("Or configure via web");
     } else {
         Serial.printf("Found %d device(s)\n", deviceAddresses.size());
     }
@@ -84,6 +150,43 @@ void updateDeviceList() {
 }
 
 void drawDisplay() {
+    if (webConfigMode) {
+        // Show web configuration screen
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.setCursor(5, 5);
+        M5.Lcd.println("Web Configuration");
+        
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(5, 25);
+        if (webServer.isAPMode()) {
+            M5.Lcd.println("Mode: Access Point");
+            M5.Lcd.setCursor(5, 40);
+            M5.Lcd.println("SSID: Victron-Config");
+        } else {
+            M5.Lcd.println("Mode: WiFi Client");
+        }
+        
+        M5.Lcd.setCursor(5, 55);
+        M5.Lcd.print("IP: ");
+        M5.Lcd.println(webServer.getIPAddress());
+        
+        M5.Lcd.setCursor(5, 75);
+        M5.Lcd.setTextColor(YELLOW, BLACK);
+        M5.Lcd.println("Open in web browser:");
+        M5.Lcd.setCursor(5, 90);
+        M5.Lcd.print("http://");
+        M5.Lcd.println(webServer.getIPAddress());
+        
+        M5.Lcd.drawLine(0, 110, 240, 110, DARKGREY);
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(DARKGREY, BLACK);
+        M5.Lcd.setCursor(5, 118);
+        M5.Lcd.print("M5: Back to Monitor");
+        return;
+    }
+    
     if (deviceAddresses.empty()) {
         return;
     }
@@ -227,18 +330,36 @@ void drawDisplay() {
 
 void loop() {
     M5.update();
+    unsigned long currentTime = millis();
     
-    // Button A: Switch to next device
-    if (M5.BtnA.wasPressed()) {
-        if (!deviceAddresses.empty()) {
+    // Button A: Switch to next device or toggle config display
+    if (M5.BtnA.wasPressed() && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+        lastButtonPressTime = currentTime;
+        
+        if (deviceAddresses.empty()) {
+            // If no devices found, toggle web config display
+            webConfigMode = !webConfigMode;
+            drawDisplay();
+        } else if (!webConfigMode) {
+            // Normal mode: cycle through devices
             currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
+            drawDisplay();
+        } else {
+            // Config mode: go back to normal mode
+            webConfigMode = false;
             drawDisplay();
         }
     }
     
-    // Periodic BLE scan
-    unsigned long currentTime = millis();
-    if (currentTime - lastScanTime > SCAN_INTERVAL && !scanning) {
+    // Long press button A: toggle web config display
+    if (M5.BtnA.pressedFor(1000) && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+        lastButtonPressTime = currentTime;
+        webConfigMode = !webConfigMode;
+        drawDisplay();
+    }
+    
+    // Periodic BLE scan (only in normal mode)
+    if (!webConfigMode && currentTime - lastScanTime > SCAN_INTERVAL && !scanning) {
         scanning = true;
         Serial.println("Periodic scan...");
         victron.scan(2);  // Quick 2-second scan
@@ -251,8 +372,8 @@ void loop() {
         }
     }
     
-    // Update display periodically
-    if (currentTime - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
+    // Update display periodically (only in normal mode with devices)
+    if (!webConfigMode && currentTime - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
         if (!deviceAddresses.empty()) {
             drawDisplay();
         }
