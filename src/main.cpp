@@ -57,10 +57,25 @@ void setup() {
     M5.Lcd.println("Startup OK");
     delay(500);
 
-    // Try enabling Victron BLE (enable one-by-one so you can see failures)
+    // Try enabling Victron BLE first (needed by other components)
     Serial.println("STARTUP: attempting victron->begin()");
     victron->begin();
     Serial.println("STARTUP: victron->begin() returned");
+    
+    // Initialize MQTT publisher with VictronBLE reference
+    Serial.println("STARTUP: attempting mqttPublisher->begin()");
+    mqttPublisher->begin(victron);
+    Serial.println("STARTUP: mqttPublisher->begin() returned");
+    
+    // Initialize web server with references to other components
+    Serial.println("STARTUP: setting up webServer references");
+    webServer->setVictronBLE(victron);
+    webServer->setMQTTPublisher(mqttPublisher);
+    
+    // Initialize web server (WiFi + HTTP server)
+    Serial.println("STARTUP: attempting webServer->begin()");
+    webServer->begin();
+    Serial.println("STARTUP: webServer->begin() returned");
 
     Serial.println("STARTUP: doing a short scan to populate devices");
     victron->scan(2);            // short scan

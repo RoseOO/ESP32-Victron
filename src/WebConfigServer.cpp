@@ -40,10 +40,20 @@ void WebConfigServer::startWiFi() {
         // Access Point mode
         Serial.println("Starting in AP mode...");
         WiFi.mode(WIFI_AP);
-        WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
         
-        Serial.print("AP IP address: ");
-        Serial.println(WiFi.softAPIP());
+        // Configure and start SoftAP
+        bool apStarted = WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
+        
+        if (apStarted) {
+            Serial.println("SoftAP started successfully");
+            // Give the AP a moment to fully initialize
+            delay(100);
+            
+            Serial.print("AP IP address: ");
+            Serial.println(WiFi.softAPIP());
+        } else {
+            Serial.println("ERROR: Failed to start SoftAP!");
+        }
     } else {
         // Station mode
         Serial.println("Connecting to WiFi...");
@@ -65,9 +75,17 @@ void WebConfigServer::startWiFi() {
             Serial.println("\nWiFi connection failed, falling back to AP mode");
             wifiConfig.apMode = true;
             WiFi.mode(WIFI_AP);
-            WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
-            Serial.print("AP IP address: ");
-            Serial.println(WiFi.softAPIP());
+            
+            bool apStarted = WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
+            
+            if (apStarted) {
+                Serial.println("Fallback SoftAP started successfully");
+                delay(100);
+                Serial.print("AP IP address: ");
+                Serial.println(WiFi.softAPIP());
+            } else {
+                Serial.println("ERROR: Failed to start fallback SoftAP!");
+            }
         }
     }
 }
