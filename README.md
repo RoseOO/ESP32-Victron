@@ -2,7 +2,32 @@
 
 A M5StickC PLUS based Bluetooth Low Energy (BLE) monitor for Victron Energy devices. This project allows you to wirelessly monitor your Victron Smart Shunt, Smart Solar MPPT controllers, and Blue Smart Chargers in real-time.
 
-## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-blue.svg)](https://platformio.org/)
+[![Arduino](https://img.shields.io/badge/Arduino-compatible-green.svg)](https://www.arduino.cc/)
+
+## 📚 Documentation
+
+- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
+- **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
+- **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
+- **[Configuration Examples](examples/CONFIGURATION.md)** - Customization and advanced features
+- **[Arduino IDE Guide](arduino/README.md)** - Arduino IDE specific instructions
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to this project
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
+
+## 🚀 Getting Started
+
+### Quick Install (5 minutes)
+
+1. **Hardware**: Get a M5StickC PLUS and a Victron device with BLE
+2. **Software**: Install Arduino IDE or PlatformIO
+3. **Upload**: Flash the firmware to your M5StickC PLUS
+4. **Enjoy**: Watch your Victron data in real-time!
+
+For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
+
+## ✨ Features
 
 - **Multi-Device Support**: Connect to and monitor multiple Victron devices:
   - Smart Shunt (Battery Monitor)
@@ -146,7 +171,16 @@ This project is open source and available under the MIT License.
 - Victron Energy for their excellent products and BLE protocol
 - M5Stack for the M5StickC PLUS hardware
 - NimBLE-Arduino library developers
+- All contributors to this project
+
+## Star History
+
+If you find this project useful, please consider giving it a star ⭐ on GitHub!
 
 ## Disclaimer
 
 This is an unofficial project and is not affiliated with or endorsed by Victron Energy. Use at your own risk.
+
+---
+
+**Made with ❤️ for the Victron and ESP32 community**
