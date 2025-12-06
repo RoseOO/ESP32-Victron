@@ -1,0 +1,221 @@
+# Quick Start Guide
+
+Get your M5StickC PLUS displaying Victron data in under 10 minutes!
+
+## What You Need
+
+✅ M5StickC PLUS board  
+✅ USB-C cable  
+✅ Computer with Arduino IDE or PlatformIO  
+✅ Victron device with Bluetooth (Smart Shunt, Smart Solar, or Blue Smart Charger)  
+
+## 5-Step Setup
+
+### Step 1: Prepare Your Victron Device (2 minutes)
+
+1. Power on your Victron device
+2. Using the VictronConnect app on your phone:
+   - Connect to your device
+   - Go to Settings → Product Info
+   - Enable **"Instant Readout"** (if not already enabled)
+   - Or ensure no PIN code is set for Bluetooth
+3. Close the VictronConnect app
+
+> **Note**: The device must be in "Instant Readout" mode for this monitor to work without pairing.
+
+### Step 2: Choose Your Development Environment
+
+Pick one:
+
+#### Option A: Arduino IDE (Easiest) ⭐ Recommended for Beginners
+
+1. Download and install [Arduino IDE](https://www.arduino.cc/en/software)
+2. Add ESP32 board support:
+   - File → Preferences → Additional Board Manager URLs
+   - Add: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+   - Tools → Board → Boards Manager → Search "ESP32" → Install
+3. Install libraries:
+   - Sketch → Include Library → Manage Libraries
+   - Install: **M5StickCPlus** and **NimBLE-Arduino**
+
+#### Option B: PlatformIO (Advanced)
+
+1. Install [VS Code](https://code.visualstudio.com/)
+2. Install PlatformIO extension from VS Code marketplace
+3. Clone this repository and open in VS Code
+
+### Step 3: Load the Code (1 minute)
+
+#### For Arduino IDE:
+1. Download `arduino/ESP32-Victron/ESP32-Victron.ino` from this repo
+2. Open it in Arduino IDE
+3. Select **Tools → Board → M5Stick-C**
+4. Select **Tools → Port** → (your device's port)
+
+#### For PlatformIO:
+1. Open the project folder in VS Code
+2. PlatformIO will automatically detect configuration
+
+### Step 4: Upload (2 minutes)
+
+1. Connect M5StickC PLUS via USB-C cable
+2. Press power button on M5StickC to turn it on
+3. Click **Upload** button
+4. Wait for "Upload complete" message
+
+> **Troubleshooting**: If upload fails, try holding the M5 button while connecting USB
+
+### Step 5: First Run (30 seconds)
+
+1. M5StickC PLUS will restart automatically
+2. You'll see "Scanning for Victron devices..."
+3. After 5 seconds, your device data should appear!
+4. Press the **M5 button** to switch between multiple devices (if you have more than one)
+
+## What You Should See
+
+```
+┌─────────────────────────────┐
+│ SmartShunt 500A HQ...  1/1  │
+│ Smart Shunt                 │
+├─────────────────────────────┤
+│ Voltage:        13.24 V     │
+│ Current:         2.15 A     │
+│ Power:          28.5 W      │
+│ Battery:        85.3 %      │
+│                             │
+├─────────────────────────────┤
+│ M5: Next Device  RSSI: -55  │
+└─────────────────────────────┘
+```
+
+## Button Controls
+
+- **M5 Button** (front button): Switch between devices
+- **Power Button** (side button): 
+  - Short press: Toggle screen on/off
+  - Long press (6s): Power off device
+
+## Common Issues & Solutions
+
+### ❌ "No devices found!"
+
+**Solutions**:
+- Ensure Victron device is ON and close to M5StickC (within 5 meters)
+- Close VictronConnect app on your phone (it may block BLE access)
+- Enable "Instant Readout" in Victron settings
+- Try restarting both devices
+
+### ❌ "Upload failed" / "Could not connect to ESP32"
+
+**Solutions**:
+- Check USB cable (must be a data cable, not charge-only)
+- Press and hold M5 button while connecting USB
+- Try different USB port
+- Lower upload speed: Tools → Upload Speed → 115200
+
+### ❌ Data shows "-- V" or "-- A"
+
+**Solutions**:
+- Device may be in standby (not connected to load/battery)
+- Move closer to Victron device (check RSSI value)
+- Wait for next scan cycle (30 seconds)
+- Ensure device is actively measuring
+
+### ❌ Display is blank
+
+**Solutions**:
+- Long press power button to wake up
+- Check if upload completed successfully
+- Verify M5StickC PLUS is charged (connect to USB)
+
+## Next Steps
+
+### Customize Your Monitor
+
+Edit these values in the code:
+
+```cpp
+// Scan more frequently (battery drains faster)
+const unsigned long SCAN_INTERVAL = 10000;  // 10 seconds
+
+// Update display more often
+const unsigned long DISPLAY_UPDATE_INTERVAL = 500;  // 0.5 seconds
+```
+
+See [examples/CONFIGURATION.md](examples/CONFIGURATION.md) for more options.
+
+### Add More Features
+
+- Enable WiFi data logging
+- Add battery low alarm
+- Implement SD card logging
+- Send data to MQTT broker
+
+See [examples/CONFIGURATION.md](examples/CONFIGURATION.md) for code examples.
+
+### Monitor Multiple Locations
+
+If you have multiple M5StickC PLUS devices, you can:
+- Place one near solar panels (for Smart Solar)
+- Place one near batteries (for Smart Shunt)
+- Place one near AC charger (for Blue Smart Charger)
+
+## Understanding the Display
+
+| Item | Meaning |
+|------|---------|
+| **Voltage** | Battery or solar panel voltage |
+| **Current** | Current flow (+ charging, - discharging) |
+| **Power** | Real-time power in watts |
+| **Battery** | State of charge (Smart Shunt only) |
+| **RSSI** | Signal strength (-60 = excellent, -80 = poor) |
+
+### Battery % Color Coding
+
+- 🟢 **Green** (>50%): Good
+- 🟡 **Yellow** (20-50%): Medium
+- 🔴 **Red** (<20%): Low - charge soon!
+
+## Tips for Best Results
+
+1. **Placement**: Keep M5StickC within 5-10 meters of Victron device
+2. **Charging**: Connect to USB for continuous monitoring
+3. **Battery Life**: On internal battery: ~2-3 hours (adjust scan interval for longer life)
+4. **Multiple Devices**: M5 button cycles through all detected devices
+5. **Signal Quality**: Keep RSSI above -70 for reliable readings
+
+## Getting Help
+
+- 📖 [Full Documentation](README.md)
+- 🔧 [Hardware Setup Guide](docs/HARDWARE_SETUP.md)
+- 📡 [Protocol Details](docs/VICTRON_BLE_PROTOCOL.md)
+- ⚙️ [Configuration Examples](examples/CONFIGURATION.md)
+- 🐛 [Open an Issue](https://github.com/RoseOO/ESP32-Victron/issues)
+
+## Success Checklist
+
+- [ ] M5StickC PLUS powered on and displays content
+- [ ] At least one Victron device detected
+- [ ] Voltage and current values displaying (not "-- V")
+- [ ] RSSI signal strength shown (around -40 to -80)
+- [ ] M5 button switches between devices (if you have multiple)
+- [ ] Display updates approximately every second
+
+✅ If all boxes are checked, you're good to go! Enjoy monitoring your Victron devices!
+
+## What's Happening Behind the Scenes?
+
+1. **Scanning**: M5StickC scans for BLE devices every 30 seconds
+2. **Filtering**: Only Victron devices (manufacturer ID 0x02E1) are processed
+3. **Parsing**: BLE advertisement data is decoded according to Victron protocol
+4. **Display**: Data is formatted and shown on the LCD screen
+5. **Updates**: Display refreshes every second with latest data
+
+---
+
+**Estimated Total Setup Time**: 5-10 minutes  
+**Skill Level**: Beginner to Intermediate  
+**Cost**: ~$30 (M5StickC PLUS) + Victron device (already owned)
+
+Happy Monitoring! 🔋⚡📊
