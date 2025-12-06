@@ -143,7 +143,7 @@ void drawDisplay() {
     M5.Lcd.print("Voltage:");
     M5.Lcd.setTextColor(WHITE, BLACK);
     M5.Lcd.setCursor(80, y);
-    if (device->dataValid && device->voltage != 0) {
+    if (device->dataValid) {
         M5.Lcd.printf("%.2f V", device->voltage);
     } else {
         M5.Lcd.print("-- V");
@@ -156,7 +156,7 @@ void drawDisplay() {
     M5.Lcd.print("Current:");
     M5.Lcd.setTextColor(WHITE, BLACK);
     M5.Lcd.setCursor(80, y);
-    if (device->dataValid && device->current != 0) {
+    if (device->dataValid) {
         M5.Lcd.printf("%.2f A", device->current);
     } else {
         M5.Lcd.print("-- A");

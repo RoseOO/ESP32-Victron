@@ -1,6 +1,7 @@
 #include "VictronBLE.h"
 
-// BLE Scan Callback
+// BLE Scan Callback - used for real-time device discovery logging
+// Note: Actual device processing happens in the scan() method
 class VictronAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
 private:
     VictronBLE* victronBLE;
@@ -9,7 +10,7 @@ public:
     VictronAdvertisedDeviceCallbacks(VictronBLE* vble) : victronBLE(vble) {}
     
     void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
-        // Check if this is a Victron device
+        // Real-time logging of discovered Victron devices during scan
         if (advertisedDevice->haveManufacturerData()) {
             std::string mfgData = advertisedDevice->getManufacturerData();
             if (mfgData.length() >= 2) {
