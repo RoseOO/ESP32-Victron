@@ -170,7 +170,8 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
         payload += "\"}}";
         
         mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
-        delay(50);  // Small delay between discovery messages
+        // Note: Discovery messages are sent once on connect, not frequently
+        // MQTT client handles queueing internally, no delay needed
     }
 }
 
@@ -178,42 +179,52 @@ void MQTTPublisher::publishDeviceData(VictronDeviceData* device) {
     String deviceId = sanitizeTopicName(device->address);
     String basePath = config.baseTopic + "/" + deviceId;
     
-    // Publish available data
+    // Publish available data - use same topic names as discovery
     if (device->hasVoltage) {
-        mqttClient.publish((basePath + "/Voltage").c_str(), String(device->voltage, 2).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Voltage");
+        mqttClient.publish(topic.c_str(), String(device->voltage, 2).c_str());
     }
     
     if (device->hasCurrent) {
-        mqttClient.publish((basePath + "/Current").c_str(), String(device->current, 3).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Current");
+        mqttClient.publish(topic.c_str(), String(device->current, 3).c_str());
     }
     
     if (device->hasPower) {
-        mqttClient.publish((basePath + "/Power").c_str(), String(device->power, 1).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Power");
+        mqttClient.publish(topic.c_str(), String(device->power, 1).c_str());
     }
     
     if (device->hasSOC && device->batterySOC >= 0) {
-        mqttClient.publish((basePath + "/Battery_SOC").c_str(), String(device->batterySOC, 1).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Battery SOC");
+        mqttClient.publish(topic.c_str(), String(device->batterySOC, 1).c_str());
     }
     
     if (device->hasTemperature && device->temperature > -200) {
-        mqttClient.publish((basePath + "/Temperature").c_str(), String(device->temperature, 1).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Temperature");
+        mqttClient.publish(topic.c_str(), String(device->temperature, 1).c_str());
     }
     
     if (device->hasAcOut) {
-        mqttClient.publish((basePath + "/AC_Output_Voltage").c_str(), String(device->acOutVoltage, 2).c_str());
-        mqttClient.publish((basePath + "/AC_Output_Power").c_str(), String(device->acOutPower, 1).c_str());
+        String topic1 = basePath + "/" + sanitizeTopicName("AC Output Voltage");
+        mqttClient.publish(topic1.c_str(), String(device->acOutVoltage, 2).c_str());
+        String topic2 = basePath + "/" + sanitizeTopicName("AC Output Power");
+        mqttClient.publish(topic2.c_str(), String(device->acOutPower, 1).c_str());
     }
     
     if (device->hasInputVoltage) {
-        mqttClient.publish((basePath + "/Input_Voltage").c_str(), String(device->inputVoltage, 2).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Input Voltage");
+        mqttClient.publish(topic.c_str(), String(device->inputVoltage, 2).c_str());
     }
     
     if (device->hasOutputVoltage) {
-        mqttClient.publish((basePath + "/Output_Voltage").c_str(), String(device->outputVoltage, 2).c_str());
+        String topic = basePath + "/" + sanitizeTopicName("Output Voltage");
+        mqttClient.publish(topic.c_str(), String(device->outputVoltage, 2).c_str());
     }
     
     // Always publish RSSI
-    mqttClient.publish((basePath + "/RSSI").c_str(), String(device->rssi).c_str());
+    String rssiTopic = basePath + "/" + sanitizeTopicName("RSSI");
+    mqttClient.publish(rssiTopic.c_str(), String(device->rssi).c_str());
     
     Serial.printf("Published MQTT data for %s\n", device->name.c_str());
 }

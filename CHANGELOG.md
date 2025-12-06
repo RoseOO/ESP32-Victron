@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-06
+
+### Added
+- **Additional Device Support**: Extended support for more Victron device types
+  - Inverters (Phoenix, MultiPlus, Quattro)
+  - DC-DC Converters (Orion series)
+  - AC output voltage, current, and power monitoring for inverters
+  - Input/output voltage monitoring for DC-DC converters
+  - Enhanced device type identification
+- **Real-Time Web Monitoring**: Live data viewing via web browser
+  - `/monitor` endpoint with auto-refreshing dashboard
+  - Display all devices in card layout with real-time updates
+  - Signal strength indicators with color coding
+  - Auto-refresh every 2 seconds
+  - Responsive design for mobile and desktop
+  - Direct link from configuration page to live monitor
+- **Home Assistant Integration**: Full MQTT support with auto-discovery
+  - MQTTPublisher class for managing MQTT connections
+  - Configurable MQTT broker, port, credentials
+  - Home Assistant MQTT Auto-Discovery protocol support
+  - Automatic sensor entity creation in Home Assistant
+  - Configurable publish intervals (5-300 seconds)
+  - Support for authentication
+  - Web interface for MQTT configuration
+  - Real-time connection status display
+- **New Record Types**: 
+  - AC Output Voltage (0x11)
+  - AC Output Current (0x12)
+  - AC Output Power (0x13)
+  - Input Voltage (0x14) for DC-DC converters
+  - Output Voltage (0x15) for DC-DC converters
+  - Off Reason (0x16)
+
+### Changed
+- Updated platformio.ini to include PubSubClient library for MQTT
+- Enhanced VictronDeviceData structure with inverter and DC-DC specific fields
+- Improved device type identification logic for inverters and converters
+- Extended display logic to show device-specific measurements
+- WebConfigServer now supports MQTTPublisher integration
+- Added MQTT configuration section to web interface
+
+### Technical Details
+- RESTful API endpoint `/api/devices/live` for real-time device data
+- RESTful API endpoints `/api/mqtt` (GET/POST) for MQTT configuration
+- MQTT publisher with automatic reconnection handling
+- Home Assistant discovery messages sent on connect
+- Device-specific MQTT topics: `{baseTopic}/{deviceId}/{sensor}`
+- Persistent MQTT configuration storage using ESP32 Preferences
+- Field availability flags for optional measurements
+
+### Known Limitations
+- Inverter and DC-DC converter support requires instant readout mode
+- MQTT uses unencrypted connections (no TLS support yet)
+- Home Assistant discovery requires MQTT broker
+- Web interface uses HTTP (not HTTPS)
+
 ## [1.1.0] - 2025-12-06
 
 ### Added
@@ -109,19 +165,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTPS support for web interface
 - Authentication/login system for web interface
 - OTA (Over-The-Air) firmware updates via web interface
-- Real-time data viewing in web interface
 - Battery low alarm functionality
-- OTA (Over-The-Air) firmware updates
-- Support for additional Victron devices (Inverters, DC-DC converters)
 - Deep sleep mode for extended battery life
-- Web interface for configuration
 
 ### Under Consideration
 - Multiple language support
 - Custom display themes
-- Integration with Home Assistant
 - Support for VE.Direct protocol
 - Encrypted BLE support (requires device pairing)
+- MQTT over TLS/SSL
+- Authentication for web interface
 
 ---
 
