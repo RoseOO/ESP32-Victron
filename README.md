@@ -35,16 +35,30 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Add/edit/delete Victron devices
   - Store encryption keys securely
   - User-friendly responsive interface
+- **Real-Time Web Monitoring**: 🆕 View live data from all devices in web browser
+  - Auto-refreshing dashboard
+  - Multiple device cards with real-time updates
+  - Signal strength indicators
+  - Works on any device with a web browser
+- **Home Assistant Integration**: 🆕 Push data to Home Assistant via MQTT
+  - Automatic device discovery
+  - Configure MQTT broker via web interface
+  - Supports authentication
+  - Configurable publish intervals
 - **Multi-Device Support**: Connect to and monitor multiple Victron devices:
   - Smart Shunt (Battery Monitor)
   - Smart Solar MPPT Controllers
   - Blue Smart Chargers
+  - Inverters (Phoenix, MultiPlus, Quattro)
+  - DC-DC Converters (Orion, etc.)
 - **Real-Time Monitoring**: Display live data including:
   - Battery/Solar Voltage (V)
   - Current Draw/Charge (A)
   - Power (W)
   - Battery State of Charge (%) for Smart Shunt
   - Temperature (°C)
+  - AC Output (for Inverters)
+  - Input/Output Voltage (for DC-DC Converters)
   - Signal Strength (RSSI)
 - **Encryption Support**: 🆕 Store and manage encryption keys for Victron devices
 - **Device Switching**: Easily switch between multiple connected Victron devices using the M5 button
@@ -59,6 +73,9 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - SmartSolar MPPT Controllers (75/10 to 250/100)
   - Blue Smart IP65 Chargers
   - Blue Smart IP22 Chargers
+  - Phoenix Inverters with VE.Direct Bluetooth Smart dongle
+  - MultiPlus/Quattro Inverters with VE.Direct Bluetooth Smart dongle
+  - Orion DC-DC Converters with Bluetooth
 
 ## Victron BLE Protocol
 
@@ -74,6 +91,9 @@ This project decodes Victron's BLE advertisement packets which contain:
 - **Libraries** (automatically installed via PlatformIO):
   - M5StickCPlus (^0.1.0)
   - NimBLE-Arduino (^1.4.1)
+  - ESPAsyncWebServer (^1.2.3)
+  - AsyncTCP (^1.1.1)
+  - PubSubClient (^2.8)
 
 ## Installation
 
@@ -118,10 +138,29 @@ The web interface allows you to:
 - Store encryption keys for encrypted devices
 - Enable/disable individual devices
 - View current configuration
+- **🆕 Monitor live data from all devices**
+- **🆕 Configure MQTT/Home Assistant integration**
 
 **Access the web interface:**
 - **Short press** M5 button: Navigate between devices
 - **Long press** M5 button (1 second): View WiFi info and IP address
+- Open web browser to the displayed IP address
+- Click "📊 Live Monitor" to see real-time data from all devices
+
+### Home Assistant Integration
+
+To integrate with Home Assistant:
+1. Access the web interface
+2. Click "⚙️ Configure MQTT" in the Home Assistant / MQTT section
+3. Enter your MQTT broker details:
+   - Broker address (e.g., `192.168.1.100`)
+   - Port (default: `1883`)
+   - Username/Password (if required)
+4. Enable "Home Assistant Auto-Discovery"
+5. Set publish interval (default: 30 seconds)
+6. Save settings
+
+The device will automatically create sensors in Home Assistant for all discovered Victron devices.
 
 For detailed instructions, see the **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)**.
 

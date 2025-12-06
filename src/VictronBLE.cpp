@@ -92,6 +92,12 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
         return DEVICE_SMART_SOLAR;
     } else if (lowerName.indexOf("charger") >= 0 || lowerName.indexOf("blue") >= 0) {
         return DEVICE_BLUE_SMART_CHARGER;
+    } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0 || 
+               lowerName.indexOf("multiplus") >= 0 || lowerName.indexOf("quattro") >= 0) {
+        return DEVICE_INVERTER;
+    } else if (lowerName.indexOf("orion") >= 0 || lowerName.indexOf("dc-dc") >= 0 || 
+               lowerName.indexOf("dcdc") >= 0 || lowerName.indexOf("converter") >= 0) {
+        return DEVICE_DCDC_CONVERTER;
     }
     
     return DEVICE_UNKNOWN;
@@ -191,6 +197,37 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
                 
             case ALARM:
                 device.alarmState = (int)decodeValue(recordData, recordLen, 1.0);
+                break;
+                
+            // Inverter specific records
+            case AC_OUT_VOLTAGE:
+                device.acOutVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                device.hasAcOut = true;
+                break;
+                
+            case AC_OUT_CURRENT:
+                device.acOutCurrent = decodeValue(recordData, recordLen, 0.1); // 100mA resolution
+                device.hasAcOut = true;
+                break;
+                
+            case AC_OUT_POWER:
+                device.acOutPower = decodeValue(recordData, recordLen, 1.0); // 1W resolution
+                device.hasAcOut = true;
+                break;
+                
+            // DC-DC Converter specific records
+            case INPUT_VOLTAGE:
+                device.inputVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                device.hasInputVoltage = true;
+                break;
+                
+            case OUTPUT_VOLTAGE:
+                device.outputVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                device.hasOutputVoltage = true;
+                break;
+                
+            case OFF_REASON:
+                device.offReason = (int)decodeValue(recordData, recordLen, 1.0);
                 break;
         }
         

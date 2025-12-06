@@ -1,12 +1,22 @@
 #include "WebConfigServer.h"
+#include "VictronBLE.h"
+#include "MQTTPublisher.h"
 
-WebConfigServer::WebConfigServer() : server(nullptr), serverStarted(false) {
+WebConfigServer::WebConfigServer() : server(nullptr), serverStarted(false), victronBLE(nullptr), mqttPublisher(nullptr) {
 }
 
 WebConfigServer::~WebConfigServer() {
     if (server) {
         delete server;
     }
+}
+
+void WebConfigServer::setVictronBLE(VictronBLE* vble) {
+    victronBLE = vble;
+}
+
+void WebConfigServer::setMQTTPublisher(MQTTPublisher* mqtt) {
+    mqttPublisher = mqtt;
 }
 
 void WebConfigServer::begin() {
@@ -72,9 +82,18 @@ void WebConfigServer::startServer() {
         handleRoot(request);
     });
     
+    // Serve monitor page
+    server->on("/monitor", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleMonitor(request);
+    });
+    
     // API endpoints
     server->on("/api/devices", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetDevices(request);
+    });
+    
+    server->on("/api/devices/live", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetLiveData(request);
     });
     
     server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
@@ -95,6 +114,14 @@ void WebConfigServer::startServer() {
     
     server->on("/api/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetWiFiConfig(request);
+    });
+    
+    server->on("/api/mqtt", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetMQTTConfig(request);
+    });
+    
+    server->on("/api/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        handleSetMQTTConfig(request);
     });
     
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
@@ -122,6 +149,77 @@ void WebConfigServer::handleGetDevices(AsyncWebServerRequest *request) {
         json += "\"address\":\"" + deviceConfigs[i].address + "\",";
         json += "\"encryptionKey\":\"" + deviceConfigs[i].encryptionKey + "\",";
         json += "\"enabled\":" + String(deviceConfigs[i].enabled ? "true" : "false");
+        json += "}";
+    }
+    
+    json += "]";
+    request->send(200, "application/json", json);
+}
+
+void WebConfigServer::handleGetLiveData(AsyncWebServerRequest *request) {
+    if (!victronBLE) {
+        request->send(500, "application/json", "{\"error\":\"VictronBLE not initialized\"}");
+        return;
+    }
+    
+    String json = "[";
+    auto& devices = victronBLE->getDevices();
+    bool first = true;
+    
+    for (auto& pair : devices) {
+        if (!first) json += ",";
+        first = false;
+        
+        VictronDeviceData* device = &pair.second;
+        json += "{";
+        json += "\"name\":\"" + device->name + "\",";
+        json += "\"address\":\"" + device->address + "\",";
+        json += "\"type\":" + String((int)device->type) + ",";
+        json += "\"typeName\":\"";
+        
+        switch (device->type) {
+            case DEVICE_SMART_SHUNT:
+                json += "Smart Shunt";
+                break;
+            case DEVICE_SMART_SOLAR:
+                json += "Smart Solar";
+                break;
+            case DEVICE_BLUE_SMART_CHARGER:
+                json += "Blue Smart Charger";
+                break;
+            case DEVICE_INVERTER:
+                json += "Inverter";
+                break;
+            case DEVICE_DCDC_CONVERTER:
+                json += "DC-DC Converter";
+                break;
+            default:
+                json += "Unknown";
+                break;
+        }
+        
+        json += "\",";
+        json += "\"rssi\":" + String(device->rssi) + ",";
+        json += "\"voltage\":" + String(device->voltage, 2) + ",";
+        json += "\"current\":" + String(device->current, 3) + ",";
+        json += "\"power\":" + String(device->power, 1) + ",";
+        json += "\"batterySOC\":" + String(device->batterySOC, 1) + ",";
+        json += "\"temperature\":" + String(device->temperature, 1) + ",";
+        json += "\"acOutVoltage\":" + String(device->acOutVoltage, 2) + ",";
+        json += "\"acOutCurrent\":" + String(device->acOutCurrent, 2) + ",";
+        json += "\"acOutPower\":" + String(device->acOutPower, 1) + ",";
+        json += "\"inputVoltage\":" + String(device->inputVoltage, 2) + ",";
+        json += "\"outputVoltage\":" + String(device->outputVoltage, 2) + ",";
+        json += "\"lastUpdate\":" + String(device->lastUpdate) + ",";
+        json += "\"dataValid\":" + String(device->dataValid ? "true" : "false") + ",";
+        json += "\"hasVoltage\":" + String(device->hasVoltage ? "true" : "false") + ",";
+        json += "\"hasCurrent\":" + String(device->hasCurrent ? "true" : "false") + ",";
+        json += "\"hasPower\":" + String(device->hasPower ? "true" : "false") + ",";
+        json += "\"hasSOC\":" + String(device->hasSOC ? "true" : "false") + ",";
+        json += "\"hasTemperature\":" + String(device->hasTemperature ? "true" : "false") + ",";
+        json += "\"hasAcOut\":" + String(device->hasAcOut ? "true" : "false") + ",";
+        json += "\"hasInputVoltage\":" + String(device->hasInputVoltage ? "true" : "false") + ",";
+        json += "\"hasOutputVoltage\":" + String(device->hasOutputVoltage ? "true" : "false");
         json += "}";
     }
     
@@ -210,6 +308,323 @@ void WebConfigServer::handleSetWiFiConfig(AsyncWebServerRequest *request) {
         saveWiFiConfig();
         request->send(200, "application/json", 
             "{\"success\":true,\"message\":\"Restart required for changes to take effect\"}");
+    } else {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"No parameters provided\"}");
+    }
+}
+
+void WebConfigServer::handleMonitor(AsyncWebServerRequest *request) {
+    String html = R"(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Victron Monitor - Live Data</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 24px; }
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: rgba(255,255,255,0.3); }
+        .content { padding: 30px; }
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .device-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+            transition: all 0.3s;
+        }
+        .device-card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+        .device-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        .device-type {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .signal {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .signal-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .signal-good { background: #27ae60; }
+        .signal-medium { background: #f39c12; }
+        .signal-poor { background: #e74c3c; }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .data-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .status {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .loading { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .last-update {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Live Monitor</h1>
+            <a href="/" class="nav-btn">⚙️ Configuration</a>
+        </div>
+        
+        <div class="content">
+            <div id="devicesList" class="devices-grid">
+                <div class="status loading">
+                    <p>Loading devices...</p>
+                </div>
+            </div>
+            <div class="last-update" id="lastUpdate"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateDevices() {
+            fetch('/api/devices/live')
+                .then(r => r.json())
+                .then(devices => {
+                    const list = document.getElementById('devicesList');
+                    
+                    if (devices.length === 0) {
+                        list.innerHTML = '<div class="status"><p>No devices found. Scanning for Victron devices...</p></div>';
+                    } else {
+                        list.innerHTML = devices.map(d => {
+                            let signalClass = 'signal-good';
+                            if (d.rssi < -80) signalClass = 'signal-poor';
+                            else if (d.rssi < -60) signalClass = 'signal-medium';
+                            
+                            let dataRows = '';
+                            
+                            if (d.hasVoltage) {
+                                dataRows += `<div class="data-row"><span class="data-label">Voltage:</span><span class="data-value">${d.voltage.toFixed(2)} V</span></div>`;
+                            }
+                            
+                            if (d.hasCurrent) {
+                                dataRows += `<div class="data-row"><span class="data-label">Current:</span><span class="data-value">${d.current.toFixed(2)} A</span></div>`;
+                            }
+                            
+                            if (d.hasPower) {
+                                dataRows += `<div class="data-row"><span class="data-label">Power:</span><span class="data-value">${d.power.toFixed(1)} W</span></div>`;
+                            }
+                            
+                            if (d.hasSOC && d.batterySOC >= 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">Battery SOC:</span><span class="data-value">${d.batterySOC.toFixed(1)} %</span></div>`;
+                            }
+                            
+                            if (d.hasTemperature && d.temperature > -200) {
+                                dataRows += `<div class="data-row"><span class="data-label">Temperature:</span><span class="data-value">${d.temperature.toFixed(1)} °C</span></div>`;
+                            }
+                            
+                            if (d.hasAcOut) {
+                                dataRows += `<div class="data-row"><span class="data-label">AC Output:</span><span class="data-value">${d.acOutVoltage.toFixed(1)} V</span></div>`;
+                                if (d.acOutPower > 0) {
+                                    dataRows += `<div class="data-row"><span class="data-label">AC Power:</span><span class="data-value">${d.acOutPower.toFixed(0)} W</span></div>`;
+                                }
+                            }
+                            
+                            if (d.hasInputVoltage) {
+                                dataRows += `<div class="data-row"><span class="data-label">Input:</span><span class="data-value">${d.inputVoltage.toFixed(2)} V</span></div>`;
+                            }
+                            
+                            if (d.hasOutputVoltage) {
+                                dataRows += `<div class="data-row"><span class="data-label">Output:</span><span class="data-value">${d.outputVoltage.toFixed(2)} V</span></div>`;
+                            }
+                            
+                            if (!dataRows) {
+                                dataRows = '<div class="data-row"><span class="data-label">Status:</span><span class="data-value">Waiting for data...</span></div>';
+                            }
+                            
+                            return `
+                                <div class="device-card">
+                                    <div class="device-header">
+                                        <div>
+                                            <div class="device-name">${d.name}</div>
+                                            <div class="device-type">${d.typeName}</div>
+                                        </div>
+                                        <div class="signal">
+                                            <div class="signal-icon ${signalClass}"></div>
+                                            <span style="font-size: 12px;">${d.rssi} dBm</span>
+                                        </div>
+                                    </div>
+                                    ${dataRows}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                    
+                    document.getElementById('lastUpdate').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+                })
+                .catch(err => {
+                    console.error('Error fetching devices:', err);
+                    document.getElementById('devicesList').innerHTML = '<div class="status"><p>Error loading devices</p></div>';
+                });
+        }
+        
+        // Initial load
+        updateDevices();
+        
+        // Update every 2 seconds
+        setInterval(updateDevices, 2000);
+    </script>
+</body>
+</html>
+)";
+    
+    request->send(200, "text/html", html);
+}
+
+void WebConfigServer::handleGetMQTTConfig(AsyncWebServerRequest *request) {
+    if (!mqttPublisher) {
+        request->send(500, "application/json", "{\"error\":\"MQTT not initialized\"}");
+        return;
+    }
+    
+    MQTTConfig& config = mqttPublisher->getConfig();
+    String json = "{";
+    json += "\"broker\":\"" + config.broker + "\",";
+    json += "\"port\":" + String(config.port) + ",";
+    json += "\"username\":\"" + config.username + "\",";
+    json += "\"baseTopic\":\"" + config.baseTopic + "\",";
+    json += "\"enabled\":" + String(config.enabled ? "true" : "false") + ",";
+    json += "\"homeAssistant\":" + String(config.homeAssistant ? "true" : "false") + ",";
+    json += "\"publishInterval\":" + String(config.publishInterval) + ",";
+    json += "\"connected\":" + String(mqttPublisher->isConnected() ? "true" : "false");
+    json += "}";
+    
+    request->send(200, "application/json", json);
+}
+
+void WebConfigServer::handleSetMQTTConfig(AsyncWebServerRequest *request) {
+    if (!mqttPublisher) {
+        request->send(500, "application/json", "{\"error\":\"MQTT not initialized\"}");
+        return;
+    }
+    
+    MQTTConfig config = mqttPublisher->getConfig();
+    bool changed = false;
+    
+    if (request->hasParam("broker", true)) {
+        config.broker = request->getParam("broker", true)->value();
+        changed = true;
+    }
+    
+    if (request->hasParam("port", true)) {
+        config.port = request->getParam("port", true)->value().toInt();
+        changed = true;
+    }
+    
+    if (request->hasParam("username", true)) {
+        config.username = request->getParam("username", true)->value();
+        changed = true;
+    }
+    
+    if (request->hasParam("password", true)) {
+        String pwd = request->getParam("password", true)->value();
+        if (!pwd.isEmpty()) {
+            config.password = pwd;
+            changed = true;
+        }
+    }
+    
+    if (request->hasParam("baseTopic", true)) {
+        config.baseTopic = request->getParam("baseTopic", true)->value();
+        changed = true;
+    }
+    
+    if (request->hasParam("enabled", true)) {
+        config.enabled = request->getParam("enabled", true)->value() == "true";
+        changed = true;
+    }
+    
+    if (request->hasParam("homeAssistant", true)) {
+        config.homeAssistant = request->getParam("homeAssistant", true)->value() == "true";
+        changed = true;
+    }
+    
+    if (request->hasParam("publishInterval", true)) {
+        config.publishInterval = request->getParam("publishInterval", true)->value().toInt();
+        changed = true;
+    }
+    
+    if (changed) {
+        mqttPublisher->setConfig(config);
+        request->send(200, "application/json", "{\"success\":true}");
     } else {
         request->send(400, "application/json", "{\"success\":false,\"error\":\"No parameters provided\"}");
     }
@@ -407,7 +822,10 @@ String WebConfigServer::generateIndexPage() {
         
         <div class="content">
             <div class="section">
-                <h2>📱 Configured Devices</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin-bottom: 0;">📱 Configured Devices</h2>
+                    <a href="/monitor" style="padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 Live Monitor</a>
+                </div>
                 <div class="info-box">
                     <strong>Note:</strong> Add your Victron devices with their BLE MAC addresses. 
                     If your device uses encryption, enter the 32-character encryption key from the VictronConnect app.
@@ -435,6 +853,18 @@ String WebConfigServer::generateIndexPage() {
                 </div>
                 <button class="btn-primary" onclick="openWiFiModal()">
                     ⚙️ Configure WiFi
+                </button>
+            </div>
+            
+            <div class="section">
+                <h2>🏠 Home Assistant / MQTT</h2>
+                <div id="mqttStatus" class="info-box">
+                    <strong>Status:</strong> <span id="mqttEnabled">Loading...</span><br>
+                    <strong>Broker:</strong> <span id="mqttBroker">Loading...</span><br>
+                    <strong>Connection:</strong> <span id="mqttConnected">Loading...</span>
+                </div>
+                <button class="btn-primary" onclick="openMQTTModal()">
+                    ⚙️ Configure MQTT
                 </button>
             </div>
         </div>
@@ -512,6 +942,65 @@ String WebConfigServer::generateIndexPage() {
         </div>
     </div>
 
+    <!-- MQTT Configuration Modal -->
+    <div id="mqttModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>MQTT / Home Assistant Configuration</h3>
+            </div>
+            <form id="mqttForm">
+                <div class="form-group">
+                    <label>Enable MQTT</label>
+                    <select id="mqttEnable">
+                        <option value="false">Disabled</option>
+                        <option value="true">Enabled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>MQTT Broker Address</label>
+                    <input type="text" id="mqttBrokerAddr" placeholder="e.g., 192.168.1.100 or mqtt.example.com">
+                    <small>IP address or hostname of MQTT broker</small>
+                </div>
+                <div class="form-group">
+                    <label>MQTT Port</label>
+                    <input type="number" id="mqttPort" placeholder="1883" value="1883">
+                </div>
+                <div class="form-group">
+                    <label>Username (Optional)</label>
+                    <input type="text" id="mqttUsername" placeholder="MQTT username">
+                </div>
+                <div class="form-group">
+                    <label>Password (Optional)</label>
+                    <input type="password" id="mqttPassword" placeholder="Leave empty to keep current">
+                </div>
+                <div class="form-group">
+                    <label>Base Topic</label>
+                    <input type="text" id="mqttTopic" placeholder="victron" value="victron">
+                    <small>Base MQTT topic for all devices</small>
+                </div>
+                <div class="form-group">
+                    <label>Home Assistant Auto-Discovery</label>
+                    <select id="mqttHA">
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                    <small>Automatically configure devices in Home Assistant</small>
+                </div>
+                <div class="form-group">
+                    <label>Publish Interval (seconds)</label>
+                    <input type="number" id="mqttInterval" placeholder="30" value="30" min="5" max="300">
+                </div>
+                <div class="info-box">
+                    <strong>ℹ️ Info:</strong> MQTT data will be published every interval. Home Assistant auto-discovery will create sensors automatically.
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeMQTTModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         let editingAddress = null;
 
@@ -519,6 +1008,7 @@ String WebConfigServer::generateIndexPage() {
         window.onload = function() {
             loadDevices();
             loadWiFiStatus();
+            loadMQTTStatus();
         };
 
         function loadDevices() {
@@ -670,6 +1160,69 @@ String WebConfigServer::generateIndexPage() {
                 if (result.success) {
                     alert('Settings saved! Device will restart...');
                     fetch('/api/restart', { method: 'POST' });
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        };
+
+        function loadMQTTStatus() {
+            fetch('/api/mqtt')
+                .then(r => r.json())
+                .then(mqtt => {
+                    document.getElementById('mqttEnabled').textContent = mqtt.enabled ? 'Enabled' : 'Disabled';
+                    document.getElementById('mqttBroker').textContent = mqtt.broker || 'Not configured';
+                    document.getElementById('mqttConnected').textContent = mqtt.connected ? '✓ Connected' : '✗ Disconnected';
+                })
+                .catch(err => {
+                    document.getElementById('mqttEnabled').textContent = 'Error loading';
+                });
+        }
+
+        function openMQTTModal() {
+            fetch('/api/mqtt')
+                .then(r => r.json())
+                .then(mqtt => {
+                    document.getElementById('mqttEnable').value = mqtt.enabled ? 'true' : 'false';
+                    document.getElementById('mqttBrokerAddr').value = mqtt.broker || '';
+                    document.getElementById('mqttPort').value = mqtt.port || 1883;
+                    document.getElementById('mqttUsername').value = mqtt.username || '';
+                    document.getElementById('mqttPassword').value = '';
+                    document.getElementById('mqttTopic').value = mqtt.baseTopic || 'victron';
+                    document.getElementById('mqttHA').value = mqtt.homeAssistant ? 'true' : 'false';
+                    document.getElementById('mqttInterval').value = mqtt.publishInterval || 30;
+                    document.getElementById('mqttModal').classList.add('active');
+                });
+        }
+
+        function closeMQTTModal() {
+            document.getElementById('mqttModal').classList.remove('active');
+        }
+
+        document.getElementById('mqttForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('enabled', document.getElementById('mqttEnable').value);
+            formData.append('broker', document.getElementById('mqttBrokerAddr').value);
+            formData.append('port', document.getElementById('mqttPort').value);
+            formData.append('username', document.getElementById('mqttUsername').value);
+            const pwd = document.getElementById('mqttPassword').value;
+            if (pwd) formData.append('password', pwd);
+            formData.append('baseTopic', document.getElementById('mqttTopic').value);
+            formData.append('homeAssistant', document.getElementById('mqttHA').value);
+            formData.append('publishInterval', document.getElementById('mqttInterval').value);
+            
+            fetch('/api/mqtt', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    closeMQTTModal();
+                    loadMQTTStatus();
+                    alert('MQTT settings saved successfully!');
                 } else {
                     alert('Error: ' + result.error);
                 }
