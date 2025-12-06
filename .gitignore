@@ -21,6 +21,7 @@
 # Dependencies
 lib/*
 !lib/README
+!lib/DFRobot_GP8XXX/
 
 # IDE
 .vscode/
