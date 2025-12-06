@@ -61,9 +61,10 @@ void VictronBLE::scan(int duration) {
                     devData.type = identifyDeviceType(devData.name);
                     devData.lastUpdate = millis();
                     
-                    // Parse manufacturer data
+                    // Parse manufacturer data with encryption key if available
                     if (mfgData.length() > 2) {
-                        parseVictronAdvertisement((const uint8_t*)mfgData.data(), mfgData.length(), devData);
+                        String encKey = getEncryptionKey(devData.address);
+                        parseVictronAdvertisement((const uint8_t*)mfgData.data(), mfgData.length(), devData, encKey);
                     }
                     
                     devices[devData.address] = devData;
@@ -96,7 +97,7 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
     return DEVICE_UNKNOWN;
 }
 
-bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device) {
+bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey) {
     // Victron BLE advertisement format:
     // [0-1]: Manufacturer ID (0x02E1)
     // [2]: Record Type
@@ -106,6 +107,30 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     
     if (length < 6) return false;
     
+    // Check if data is encrypted (byte 5 != 0x00)
+    bool isEncrypted = (data[5] != 0x00);
+    
+    const uint8_t* dataToProcess = data;
+    uint8_t* decryptedBuffer = nullptr;
+    
+    if (isEncrypted) {
+        if (encryptionKey.isEmpty()) {
+            Serial.printf("Device %s is encrypted but no key provided\n", device.address.c_str());
+            return false;
+        }
+        
+        // Allocate buffer for decrypted data
+        decryptedBuffer = new uint8_t[length];
+        if (!decryptData(data, length, decryptedBuffer, encryptionKey)) {
+            delete[] decryptedBuffer;
+            Serial.printf("Failed to decrypt data for %s\n", device.address.c_str());
+            return false;
+        }
+        
+        dataToProcess = decryptedBuffer;
+        Serial.printf("Successfully decrypted data for %s\n", device.address.c_str());
+    }
+    
     device.dataValid = true;
     
     // Start parsing from byte 6 (after header)
@@ -114,12 +139,12 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     while (pos < length) {
         if (pos + 1 >= length) break;
         
-        uint8_t recordType = data[pos];
-        uint8_t recordLen = data[pos + 1];
+        uint8_t recordType = dataToProcess[pos];
+        uint8_t recordLen = dataToProcess[pos + 1];
         
         if (pos + 2 + recordLen > length) break;
         
-        const uint8_t* recordData = &data[pos + 2];
+        const uint8_t* recordData = &dataToProcess[pos + 2];
         
         switch (recordType) {
             case BATTERY_VOLTAGE:
@@ -172,6 +197,10 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         pos += 2 + recordLen;
     }
     
+    if (decryptedBuffer) {
+        delete[] decryptedBuffer;
+    }
+    
     return true;
 }
 
@@ -212,4 +241,47 @@ bool VictronBLE::hasDevices() {
 
 int VictronBLE::getDeviceCount() {
     return devices.size();
+}
+
+void VictronBLE::setEncryptionKey(const String& address, const String& key) {
+    encryptionKeys[address] = key;
+    Serial.printf("Set encryption key for device %s\n", address.c_str());
+}
+
+String VictronBLE::getEncryptionKey(const String& address) {
+    if (encryptionKeys.find(address) != encryptionKeys.end()) {
+        return encryptionKeys[address];
+    }
+    return "";
+}
+
+void VictronBLE::clearEncryptionKeys() {
+    encryptionKeys.clear();
+}
+
+bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key) {
+    // NOTE: Victron uses AES-128-CTR encryption for BLE data
+    // This is a placeholder implementation that copies the data as-is
+    // A full implementation would require:
+    // 1. Convert hex key string to 16-byte array
+    // 2. Extract IV/nonce from the encrypted payload
+    // 3. Use mbedtls or similar library for AES-128-CTR decryption
+    
+    if (key.isEmpty() || length < 6) {
+        return false;
+    }
+    
+    // TODO: Implement proper AES-128-CTR decryption
+    // For now, this is a placeholder that indicates encryption support is present
+    // but not fully implemented. Users with encrypted devices will need instant readout mode.
+    
+    Serial.println("WARNING: Encryption decryption not fully implemented yet.");
+    Serial.println("Please enable 'Instant Readout' mode in VictronConnect app.");
+    
+    // Copy header (first 6 bytes) as-is
+    memcpy(decryptedData, encryptedData, 6);
+    
+    // For encrypted data, we would decrypt the payload here
+    // Currently returning false to indicate decryption failed
+    return false;
 }

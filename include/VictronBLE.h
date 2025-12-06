@@ -90,16 +90,21 @@ struct VictronDeviceData {
 class VictronBLE {
 private:
     std::map<String, VictronDeviceData> devices;
+    std::map<String, String> encryptionKeys;  // MAC address -> encryption key
     NimBLEScan* pBLEScan;
     
     VictronDeviceType identifyDeviceType(const String& name);
-    bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device);
+    bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey);
+    bool decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key);
     float decodeValue(const uint8_t* data, int len, float scale);
     
 public:
     VictronBLE();
     void begin();
     void scan(int duration = 5);
+    void setEncryptionKey(const String& address, const String& key);
+    String getEncryptionKey(const String& address);
+    void clearEncryptionKeys();
     std::map<String, VictronDeviceData>& getDevices();
     VictronDeviceData* getDevice(const String& address);
     bool hasDevices();
