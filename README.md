@@ -9,6 +9,7 @@ A M5StickC PLUS based Bluetooth Low Energy (BLE) monitor for Victron Energy devi
 ## 📚 Documentation
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
+- **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
 - **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
 - **[Configuration Examples](examples/CONFIGURATION.md)** - Customization and advanced features
@@ -29,6 +30,11 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
 
 ## ✨ Features
 
+- **Web Configuration Interface**: 🆕 Configure devices and encryption keys via web browser
+  - WiFi Access Point or Station mode
+  - Add/edit/delete Victron devices
+  - Store encryption keys securely
+  - User-friendly responsive interface
 - **Multi-Device Support**: Connect to and monitor multiple Victron devices:
   - Smart Shunt (Battery Monitor)
   - Smart Solar MPPT Controllers
@@ -40,6 +46,7 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Battery State of Charge (%) for Smart Shunt
   - Temperature (°C)
   - Signal Strength (RSSI)
+- **Encryption Support**: 🆕 Store and manage encryption keys for Victron devices
 - **Device Switching**: Easily switch between multiple connected Victron devices using the M5 button
 - **Automatic Scanning**: Periodically scans for new devices and updates connections
 - **Compact Display**: Optimized UI for the M5StickC PLUS's 1.14" LCD screen
@@ -90,11 +97,33 @@ This project decodes Victron's BLE advertisement packets which contain:
 
 ## Usage
 
+### Basic Operation
+
 1. **Power On**: Turn on your M5StickC PLUS
-2. **Initial Scan**: The device will automatically scan for Victron devices (5 seconds)
-3. **View Data**: Live data from the first detected device will be displayed
-4. **Switch Devices**: Press the **M5 Button (front button)** to cycle through detected devices
-5. **Auto-Update**: The display updates every second, and scans for new devices every 30 seconds
+2. **WiFi Setup**: On first boot, device creates WiFi AP "Victron-Config"
+3. **Web Configuration** (optional): 
+   - Connect to "Victron-Config" WiFi (password: `victron123`)
+   - Open browser to `http://192.168.4.1`
+   - Add your Victron devices with encryption keys if needed
+4. **Initial Scan**: The device will automatically scan for Victron devices (5 seconds)
+5. **View Data**: Live data from the first detected device will be displayed
+6. **Switch Devices**: Press the **M5 Button (front button)** to cycle through detected devices
+7. **Auto-Update**: The display updates every second, and scans for new devices every 30 seconds
+
+### Web Configuration Interface
+
+The web interface allows you to:
+- Configure WiFi (AP or Station mode)
+- Add Victron devices with MAC addresses
+- Store encryption keys for encrypted devices
+- Enable/disable individual devices
+- View current configuration
+
+**Access the web interface:**
+- **Short press** M5 button: Navigate between devices
+- **Long press** M5 button (1 second): View WiFi info and IP address
+
+For detailed instructions, see the **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)**.
 
 ## Display Layout
 
