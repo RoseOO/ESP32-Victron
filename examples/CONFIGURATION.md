@@ -219,7 +219,7 @@ void loop() {
         drawDisplay();
     }
     
-    // Button B: Force rescan (if M5StickC Plus has button B)
+    // Button B: Force rescan (if M5StickC Plus2 has button B)
     if (M5.BtnB.wasPressed()) {
         victron.scan(5);
         updateDeviceList();

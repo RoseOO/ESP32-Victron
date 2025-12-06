@@ -177,7 +177,7 @@ For a SmartShunt device with MAC `AA:BB:CC:DD:EE:FF`:
 ## User Workflow
 
 ### Initial Setup
-1. Power on M5StickC PLUS
+1. Power on M5StickC PLUS2
 2. Connect to "Victron-Config" WiFi (password: victron123)
 3. Navigate to http://192.168.4.1
 4. Add Victron devices with MAC addresses
@@ -186,7 +186,7 @@ For a SmartShunt device with MAC `AA:BB:CC:DD:EE:FF`:
 
 ### Regular Use
 1. View live data at http://{device-ip}/monitor
-2. Or use M5StickC PLUS display to cycle through devices
+2. Or use M5StickC PLUS2 display to cycle through devices
 3. Data automatically published to Home Assistant via MQTT
 
 ### Home Assistant Setup

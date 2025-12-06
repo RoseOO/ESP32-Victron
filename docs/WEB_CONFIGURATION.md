@@ -26,7 +26,7 @@ The ESP32-Victron project now includes a web-based configuration interface that 
 
 ### First Time Setup
 
-1. **Power on your M5StickC PLUS** with the new firmware
+1. **Power on your M5StickC PLUS2** with the new firmware
 2. **Connect to WiFi**: The device will create an Access Point named "Victron-Config"
    - Default password: `victron123`
 3. **Open web browser** and navigate to: `http://192.168.4.1`
@@ -179,7 +179,7 @@ The current implementation:
    - If device is encrypted, ensure key is exactly 32 hex characters
    - If device uses instant readout, leave key empty
 3. **Check device is in range**: BLE range is typically 5-10 meters
-4. **Restart device**: Power cycle the M5StickC PLUS
+4. **Restart device**: Power cycle the M5StickC PLUS2
 
 ### WiFi Connection Failed
 

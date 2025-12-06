@@ -2,13 +2,13 @@
 
 ## Overview
 
-Successfully implemented a complete BLE monitoring solution for Victron Energy devices using the M5StickC PLUS ESP32 board. The project provides real-time wireless monitoring of battery voltage, current, power, state of charge, and temperature from Victron Smart Shunt, Smart Solar MPPT controllers, and Blue Smart Chargers.
+Successfully implemented a complete BLE monitoring solution for Victron Energy devices using the M5StickC PLUS2 ESP32 board. The project provides real-time wireless monitoring of battery voltage, current, power, state of charge, and temperature from Victron Smart Shunt, Smart Solar MPPT controllers, and Blue Smart Chargers.
 
 ## Implementation Completion
 
 ✅ **All requirements from the problem statement have been met:**
 
-1. ✅ M5StickC PLUS ESP32 board support
+1. ✅ M5StickC PLUS2 ESP32 board support
 2. ✅ Display that connects to Victron Smart Shunt over BLE
 3. ✅ Display shows Current draw, Voltage, and Battery state
 4. ✅ Can connect to Smart Solar MPPT controllers
@@ -56,7 +56,7 @@ ESP32-Victron/
    - Multi-device management
 
 2. **Display System**
-   - M5StickC PLUS LCD interface (240×135 pixels)
+   - M5StickC PLUS2 LCD interface (240×135 pixels)
    - Real-time data visualization
    - Color-coded battery status
    - Signal strength indication
@@ -163,7 +163,7 @@ ESP32-Victron/
 
 3. **HARDWARE_SETUP.md** (286 lines)
    - Hardware requirements details
-   - M5StickC PLUS setup
+   - M5StickC PLUS2 setup
    - Victron device configuration
    - Physical placement guidelines
    - Troubleshooting hardware issues
@@ -234,7 +234,7 @@ ESP32-Victron/
 
 ### Methodology
 
-1. **Research Phase**: Analyzed Victron BLE protocol and M5StickC PLUS capabilities
+1. **Research Phase**: Analyzed Victron BLE protocol and M5StickC PLUS2 capabilities
 2. **Design Phase**: Created modular architecture with clear separation of concerns
 3. **Implementation Phase**: Iterative development with frequent commits
 4. **Documentation Phase**: Comprehensive guides for users and developers
@@ -306,7 +306,7 @@ The project is production-ready with room for future improvements:
 
 ## Conclusion
 
-The ESP32-Victron BLE Monitor project has been successfully implemented with all requirements met. The solution provides a complete, production-ready monitoring system for Victron Energy devices using the M5StickC PLUS platform. The code is well-documented, secure, and maintainable, with support for both PlatformIO and Arduino IDE development environments.
+The ESP32-Victron BLE Monitor project has been successfully implemented with all requirements met. The solution provides a complete, production-ready monitoring system for Victron Energy devices using the M5StickC PLUS2 platform. The code is well-documented, secure, and maintainable, with support for both PlatformIO and Arduino IDE development environments.
 
 The project includes over 1,000 lines of carefully crafted C++ code and 30,000 words of comprehensive documentation, making it accessible to users of all skill levels while providing the technical depth needed for developers who wish to extend or customize the functionality.
 

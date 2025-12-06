@@ -32,7 +32,7 @@ We welcome suggestions for new features:
 ### Prerequisites
 
 - PlatformIO or Arduino IDE
-- M5StickC PLUS for testing
+- M5StickC PLUS2 for testing
 - At least one Victron device for testing
 - Git for version control
 
@@ -95,7 +95,7 @@ Before submitting a pull request:
    ```
 
 2. **Test on hardware**:
-   - Upload to M5StickC PLUS
+   - Upload to M5StickC PLUS2
    - Verify with at least one Victron device
    - Test all modified functionality
 

@@ -1,6 +1,6 @@
 # ESP32-Victron BLE Monitor
 
-A M5StickC PLUS based Bluetooth Low Energy (BLE) monitor for Victron Energy devices. This project allows you to wirelessly monitor your Victron Smart Shunt, Smart Solar MPPT controllers, and Blue Smart Chargers in real-time.
+A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy devices. This project allows you to wirelessly monitor your Victron Smart Shunt, Smart Solar MPPT controllers, and Blue Smart Chargers in real-time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-blue.svg)](https://platformio.org/)
@@ -21,9 +21,9 @@ A M5StickC PLUS based Bluetooth Low Energy (BLE) monitor for Victron Energy devi
 
 ### Quick Install (5 minutes)
 
-1. **Hardware**: Get a M5StickC PLUS and a Victron device with BLE
+1. **Hardware**: Get a M5StickC PLUS2 and a Victron device with BLE
 2. **Software**: Install Arduino IDE or PlatformIO
-3. **Upload**: Flash the firmware to your M5StickC PLUS
+3. **Upload**: Flash the firmware to your M5StickC PLUS2
 4. **Enjoy**: Watch your Victron data in real-time!
 
 For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
@@ -63,11 +63,11 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
 - **Encryption Support**: 🆕 Store and manage encryption keys for Victron devices
 - **Device Switching**: Easily switch between multiple connected Victron devices using the M5 button
 - **Automatic Scanning**: Periodically scans for new devices and updates connections
-- **Compact Display**: Optimized UI for the M5StickC PLUS's 1.14" LCD screen
+- **Compact Display**: Optimized UI for the M5StickC PLUS2's 1.14" LCD screen
 
 ## Hardware Requirements
 
-- **M5StickC PLUS** - ESP32-based development board with built-in display
+- **M5StickC PLUS2** - ESP32-based development board with built-in display
 - **Victron Energy Devices** with BLE support:
   - SmartShunt 500A/500A with Bluetooth
   - SmartSolar MPPT Controllers (75/10 to 250/100)
@@ -89,7 +89,7 @@ This project decodes Victron's BLE advertisement packets which contain:
 - **PlatformIO** - Cross-platform build system and library manager
 - **Arduino Framework** for ESP32
 - **Libraries** (automatically installed via PlatformIO):
-  - M5StickCPlus (^0.1.0)
+  - M5StickCPlus2 (^0.1.1)
   - NimBLE-Arduino (^1.4.1)
   - ESPAsyncWebServer (^1.2.3)
   - AsyncTCP (^1.1.1)
@@ -105,7 +105,7 @@ This project decodes Victron's BLE advertisement packets which contain:
 
 2. Open the project in PlatformIO (VS Code with PlatformIO extension recommended)
 
-3. Build and upload to your M5StickC PLUS:
+3. Build and upload to your M5StickC PLUS2:
    ```bash
    pio run --target upload
    ```
@@ -119,7 +119,7 @@ This project decodes Victron's BLE advertisement packets which contain:
 
 ### Basic Operation
 
-1. **Power On**: Turn on your M5StickC PLUS
+1. **Power On**: Turn on your M5StickC PLUS2
 2. **WiFi Setup**: On first boot, device creates WiFi AP "Victron-Config"
 3. **Web Configuration** (optional): 
    - Connect to "Victron-Config" WiFi (password: `victron123`)
@@ -193,7 +193,7 @@ For detailed instructions, see the **[Web Configuration Guide](docs/WEB_CONFIGUR
 ### Data Not Updating
 - Check signal strength (RSSI) - move closer to the device
 - Ensure the Victron device is actively measuring (connected to battery/solar)
-- Try rescanning by restarting the M5StickC PLUS
+- Try rescanning by restarting the M5StickC PLUS2
 
 ### Build Errors
 - Ensure you have the latest PlatformIO Core
@@ -237,7 +237,7 @@ This project is open source and available under the MIT License.
 ## Acknowledgments
 
 - Victron Energy for their excellent products and BLE protocol
-- M5Stack for the M5StickC PLUS hardware
+- M5Stack for the M5StickC PLUS2 hardware
 - NimBLE-Arduino library developers
 - All contributors to this project
 

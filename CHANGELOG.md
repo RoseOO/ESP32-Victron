@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-12-06
+
+### Changed
+- **Hardware Platform Update**: Updated to target M5StickC PLUS2
+  - Changed board configuration from `m5stick-c` to `m5stick-c-plus2`
+  - Updated library from `M5StickCPlus@^0.1.0` to `M5StickCPlus2@^0.1.1`
+  - Updated all source code includes from `M5StickCPlus.h` to `M5StickCPlus2.h`
+  - Updated all documentation to reference M5StickC PLUS2
+  - M5StickC PLUS2 features improved hardware:
+    - ESP32-PICO-V3-02 processor (upgraded from PICO-D4)
+    - 200mAh battery (upgraded from 120mAh)
+    - 8MB Flash and 2MB PSRAM (double the storage)
+    - Additional Button C
+  - All existing features remain compatible
+
+### Note
+This version specifically targets the M5StickC PLUS2 hardware. If you are using the original M5StickC PLUS, please use version 1.2.0 or earlier.
+
 ## [1.2.0] - 2025-12-06
 
 ### Added
@@ -113,7 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of ESP32-Victron BLE Monitor
-- Support for M5StickC PLUS hardware platform
+- Support for M5StickC PLUS2 hardware platform
 - BLE scanning and monitoring of Victron Energy devices
 - Support for three device types:
   - SmartShunt 500A battery monitor
@@ -189,7 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Release Notes
 
 #### v1.0.0 (2025-12-06)
-First stable release. Provides complete basic functionality for monitoring Victron devices via BLE on M5StickC PLUS hardware. Includes comprehensive documentation and both PlatformIO and Arduino IDE support.
+First stable release. Provides complete basic functionality for monitoring Victron devices via BLE on M5StickC PLUS2 hardware. Includes comprehensive documentation and both PlatformIO and Arduino IDE support.
 
 ---
 
