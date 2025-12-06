@@ -18,6 +18,10 @@ const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
 
+// Forward declarations
+void updateDeviceList();
+void drawDisplay();
+
 void setup() {
     // Initialize M5StickC PLUS
     M5.begin();

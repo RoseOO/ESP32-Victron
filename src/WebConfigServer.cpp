@@ -639,7 +639,7 @@ void WebConfigServer::handleRestart(AsyncWebServerRequest *request) {
 }
 
 String WebConfigServer::generateIndexPage() {
-    String html = R"(
+    String html = R"HTML(
 <!DOCTYPE html>
 <html>
 <head>
@@ -841,18 +841,18 @@ String WebConfigServer::generateIndexPage() {
                     </div>
                 </div>
                 <button class="btn-primary" onclick="openAddDeviceModal()" style="margin-top: 15px;">
-                    ➕ Add Device
+                    + Add Device
                 </button>
             </div>
             
             <div class="section">
-                <h2>📡 WiFi Configuration</h2>
+                <h2>WiFi Configuration</h2>
                 <div id="wifiStatus" class="info-box">
                     <strong>Current Mode:</strong> <span id="currentMode">Loading...</span><br>
                     <strong>IP Address:</strong> <span id="ipAddress">Loading...</span>
                 </div>
                 <button class="btn-primary" onclick="openWiFiModal()">
-                    ⚙️ Configure WiFi
+                    Configure WiFi
                 </button>
             </div>
             
@@ -932,7 +932,7 @@ String WebConfigServer::generateIndexPage() {
                     </div>
                 </div>
                 <div class="info-box">
-                    <strong>⚠️ Warning:</strong> Changing WiFi settings requires a restart to take effect.
+                    <strong>Warning:</strong> Changing WiFi settings requires a restart to take effect.
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-secondary" onclick="closeWiFiModal()">Cancel</button>
@@ -1024,7 +1024,7 @@ String WebConfigServer::generateIndexPage() {
                                 <div class="device-info">
                                     <div class="device-name">${d.name}</div>
                                     <div class="device-address">${d.address}</div>
-                                    ${d.encryptionKey ? '<div class="device-key">🔒 Encrypted</div>' : '<div class="device-key">🔓 Instant Readout</div>'}
+                                    ${d.encryptionKey ? '<div class="device-key">Encrypted</div>' : '<div class="device-key">Instant Readout</div>'}
                                 </div>
                                 <div class="device-actions">
                                     <button class="btn-edit" onclick='editDevice(${JSON.stringify(d)})'>Edit</button>
@@ -1231,7 +1231,7 @@ String WebConfigServer::generateIndexPage() {
     </script>
 </body>
 </html>
-)";
+)HTML";
     
     return html;
 }
