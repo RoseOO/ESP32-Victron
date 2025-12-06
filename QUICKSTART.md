@@ -65,12 +65,28 @@ Pick one:
 
 > **Troubleshooting**: If upload fails, try holding the M5 button while connecting USB
 
-### Step 5: First Run (30 seconds)
+### Step 5: First Run & Web Configuration (2 minutes)
 
-1. M5StickC PLUS will restart automatically
-2. You'll see "Scanning for Victron devices..."
-3. After 5 seconds, your device data should appear!
-4. Press the **M5 button** to switch between multiple devices (if you have more than one)
+1. **Initial Boot**:
+   - M5StickC PLUS will restart automatically
+   - You'll see "Starting WiFi..." then "Starting BLE..."
+   - Device creates WiFi access point "Victron-Config"
+
+2. **Optional: Configure via Web Interface** (Recommended for encrypted devices):
+   - On your phone/computer, connect to WiFi: **Victron-Config**
+   - Password: `victron123`
+   - Open browser and go to: `http://192.168.4.1`
+   - You'll see the web configuration page
+   - Click **"➕ Add Device"** to add your Victron devices with encryption keys
+
+3. **First Scan**:
+   - After 5 seconds, the device will scan for Victron devices
+   - Your device data should appear!
+   - Press the **M5 button** to switch between multiple devices
+
+4. **Toggle Display**:
+   - **Short press** M5 button: Switch devices
+   - **Long press** M5 button (1 second): View WiFi info and IP address
 
 ## What You Should See
 
@@ -91,10 +107,27 @@ Pick one:
 
 ## Button Controls
 
-- **M5 Button** (front button): Switch between devices
+- **M5 Button** (front button): 
+  - Short press: Switch between devices
+  - Long press (1s): Toggle web config info display
 - **Power Button** (side button): 
   - Short press: Toggle screen on/off
   - Long press (6s): Power off device
+
+## Web Configuration Interface
+
+The web interface allows you to:
+- **Add devices** with their BLE MAC addresses
+- **Store encryption keys** for encrypted Victron devices
+- **Configure WiFi** (Access Point or connect to your network)
+- **Manage devices** (edit, enable/disable, delete)
+
+**To access**:
+1. Connect to "Victron-Config" WiFi (password: `victron123`)
+2. Open browser: `http://192.168.4.1`
+3. Or long-press M5 button to see current IP address
+
+**For detailed guide**, see: [Web Configuration Documentation](docs/WEB_CONFIGURATION.md)
 
 ## Common Issues & Solutions
 
@@ -105,6 +138,17 @@ Pick one:
 - Close VictronConnect app on your phone (it may block BLE access)
 - Enable "Instant Readout" in Victron settings
 - Try restarting both devices
+- **New**: Use web interface to manually add device with MAC address
+
+### ❌ Device is encrypted / Cannot read data
+
+**Solutions**:
+- Option 1: Enable "Instant Readout" mode in VictronConnect app
+- Option 2: Use web interface to add encryption key:
+  1. Get encryption key from VictronConnect app (Settings → BLE)
+  2. Connect to web interface
+  3. Add device with MAC address and encryption key
+- **Note**: Full encryption support coming in future update
 
 ### ❌ "Upload failed" / "Could not connect to ESP32"
 

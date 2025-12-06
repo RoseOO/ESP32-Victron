@@ -266,6 +266,10 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     // 1. Convert hex key string to 16-byte array
     // 2. Extract IV/nonce from the encrypted payload
     // 3. Use mbedtls or similar library for AES-128-CTR decryption
+    //
+    // Return value:
+    // - true: Decryption successful, decryptedData contains valid data
+    // - false: Decryption failed, decryptedData is in undefined state
     
     if (key.isEmpty() || length < 6) {
         return false;
@@ -283,5 +287,6 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     
     // For encrypted data, we would decrypt the payload here
     // Currently returning false to indicate decryption failed
+    // decryptedData buffer is left in partially initialized state (header only)
     return false;
 }

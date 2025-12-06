@@ -217,6 +217,8 @@ void WebConfigServer::handleSetWiFiConfig(AsyncWebServerRequest *request) {
 
 void WebConfigServer::handleRestart(AsyncWebServerRequest *request) {
     request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
+    // Delay is intentional here to allow the HTTP response to complete
+    // before restart. This is acceptable for a restart endpoint.
     delay(1000);
     ESP.restart();
 }

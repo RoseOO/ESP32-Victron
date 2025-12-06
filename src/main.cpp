@@ -8,8 +8,10 @@ std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
+unsigned long lastButtonPressTime = 0;  // For debouncing
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
+const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
@@ -94,7 +96,7 @@ void setup() {
         if (M5.BtnA.wasPressed()) {
             break;
         }
-        delay(100);
+        delay(50);  // Reduced delay for better responsiveness
     }
     
     // Initial scan
@@ -328,9 +330,12 @@ void drawDisplay() {
 
 void loop() {
     M5.update();
+    unsigned long currentTime = millis();
     
     // Button A: Switch to next device or toggle config display
-    if (M5.BtnA.wasPressed()) {
+    if (M5.BtnA.wasPressed() && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+        lastButtonPressTime = currentTime;
+        
         if (deviceAddresses.empty()) {
             // If no devices found, toggle web config display
             webConfigMode = !webConfigMode;
@@ -347,14 +352,13 @@ void loop() {
     }
     
     // Long press button A: toggle web config display
-    if (M5.BtnA.pressedFor(1000)) {
+    if (M5.BtnA.pressedFor(1000) && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+        lastButtonPressTime = currentTime;
         webConfigMode = !webConfigMode;
         drawDisplay();
-        delay(500);  // Debounce
     }
     
     // Periodic BLE scan (only in normal mode)
-    unsigned long currentTime = millis();
     if (!webConfigMode && currentTime - lastScanTime > SCAN_INTERVAL && !scanning) {
         scanning = true;
         Serial.println("Periodic scan...");
