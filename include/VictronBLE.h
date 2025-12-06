@@ -59,20 +59,32 @@ struct VictronDeviceData {
     unsigned long lastUpdate;
     bool dataValid;
     
+    // Field availability flags
+    bool hasVoltage;
+    bool hasCurrent;
+    bool hasPower;
+    bool hasSOC;
+    bool hasTemperature;
+    
     VictronDeviceData() : 
         type(DEVICE_UNKNOWN), 
         rssi(0),
         voltage(0), 
         current(0), 
         power(0), 
-        batterySOC(0), 
-        temperature(0),
+        batterySOC(-1),  // -1 indicates unavailable
+        temperature(-273.15),  // Below absolute zero = unavailable
         consumedAh(0),
         timeToGo(0),
         deviceState(0),
         alarmState(0),
         lastUpdate(0), 
-        dataValid(false) {}
+        dataValid(false),
+        hasVoltage(false),
+        hasCurrent(false),
+        hasPower(false),
+        hasSOC(false),
+        hasTemperature(false) {}
 };
 
 class VictronBLE {

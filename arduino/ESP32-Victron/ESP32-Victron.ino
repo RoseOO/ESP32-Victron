@@ -70,10 +70,18 @@ struct VictronDeviceData {
     unsigned long lastUpdate;
     bool dataValid;
     
+    // Field availability flags
+    bool hasVoltage;
+    bool hasCurrent;
+    bool hasPower;
+    bool hasSOC;
+    bool hasTemperature;
+    
     VictronDeviceData() : 
         type(DEVICE_UNKNOWN), rssi(0), voltage(0), current(0), power(0), 
-        batterySOC(0), temperature(0), consumedAh(0), timeToGo(0),
-        deviceState(0), alarmState(0), lastUpdate(0), dataValid(false) {}
+        batterySOC(-1), temperature(-273.15), consumedAh(0), timeToGo(0),
+        deviceState(0), alarmState(0), lastUpdate(0), dataValid(false),
+        hasVoltage(false), hasCurrent(false), hasPower(false), hasSOC(false), hasTemperature(false) {}
 };
 
 // Global variables
@@ -284,21 +292,26 @@ bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDevice
             case SOLAR_CHARGER_VOLTAGE:
             case CHARGER_VOLTAGE:
                 device.voltage = decodeValue(recordData, recordLen, 0.01);
+                device.hasVoltage = true;
                 break;
             case BATTERY_CURRENT:
             case SOLAR_CHARGER_CURRENT:
             case CHARGER_CURRENT:
                 device.current = decodeValue(recordData, recordLen, 0.001);
+                device.hasCurrent = true;
                 break;
             case BATTERY_POWER:
                 device.power = decodeValue(recordData, recordLen, 1.0);
+                device.hasPower = true;
                 break;
             case BATTERY_SOC:
                 device.batterySOC = decodeValue(recordData, recordLen, 0.01);
+                device.hasSOC = true;
                 break;
             case BATTERY_TEMPERATURE:
             case EXTERNAL_TEMPERATURE:
                 device.temperature = decodeValue(recordData, recordLen, 0.01) - 273.15;
+                device.hasTemperature = true;
                 break;
             case CONSUMED_AH:
                 device.consumedAh = decodeValue(recordData, recordLen, 0.1);
@@ -415,45 +428,37 @@ void drawDisplay() {
     }
     y += 15;
     
-    if (device.power != 0 || device.dataValid) {
+    if (device.hasPower) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Power:");
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(80, y);
-        if (device.dataValid) {
-            M5.Lcd.printf("%.1f W", device.power);
-        } else {
-            M5.Lcd.print("-- W");
-        }
+        M5.Lcd.printf("%.1f W", device.power);
         y += 15;
     }
     
-    if (device.type == DEVICE_SMART_SHUNT && device.batterySOC >= 0) {
+    if (device.hasSOC) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Battery:");
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(80, y);
-        if (device.dataValid) {
-            uint16_t color = WHITE;
-            if (device.batterySOC <= 20) {
-                color = RED;
-            } else if (device.batterySOC <= 50) {
-                color = YELLOW;
-            } else {
-                color = GREEN;
-            }
-            M5.Lcd.setTextColor(color, BLACK);
-            M5.Lcd.printf("%.1f %%", device.batterySOC);
-            M5.Lcd.setTextColor(WHITE, BLACK);
+        uint16_t color = WHITE;
+        if (device.batterySOC <= 20) {
+            color = RED;
+        } else if (device.batterySOC <= 50) {
+            color = YELLOW;
         } else {
-            M5.Lcd.print("-- %");
+            color = GREEN;
         }
+        M5.Lcd.setTextColor(color, BLACK);
+        M5.Lcd.printf("%.1f %%", device.batterySOC);
+        M5.Lcd.setTextColor(WHITE, BLACK);
         y += 15;
     }
     
-    if (device.temperature != 0) {
+    if (device.hasTemperature) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Temp:");

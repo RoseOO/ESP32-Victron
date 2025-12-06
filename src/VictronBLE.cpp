@@ -126,25 +126,30 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
             case SOLAR_CHARGER_VOLTAGE:
             case CHARGER_VOLTAGE:
                 device.voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                device.hasVoltage = true;
                 break;
                 
             case BATTERY_CURRENT:
             case SOLAR_CHARGER_CURRENT:
             case CHARGER_CURRENT:
                 device.current = decodeValue(recordData, recordLen, 0.001); // 1mA resolution
+                device.hasCurrent = true;
                 break;
                 
             case BATTERY_POWER:
                 device.power = decodeValue(recordData, recordLen, 1.0);
+                device.hasPower = true;
                 break;
                 
             case BATTERY_SOC:
                 device.batterySOC = decodeValue(recordData, recordLen, 0.01); // 0.01% resolution
+                device.hasSOC = true;
                 break;
                 
             case BATTERY_TEMPERATURE:
             case EXTERNAL_TEMPERATURE:
                 device.temperature = decodeValue(recordData, recordLen, 0.01) - 273.15; // Kelvin to Celsius
+                device.hasTemperature = true;
                 break;
                 
             case CONSUMED_AH:

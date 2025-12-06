@@ -164,47 +164,39 @@ void drawDisplay() {
     y += 15;
     
     // Power
-    if (device->power != 0 || device->dataValid) {
+    if (device->hasPower) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Power:");
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(80, y);
-        if (device->dataValid) {
-            M5.Lcd.printf("%.1f W", device->power);
-        } else {
-            M5.Lcd.print("-- W");
-        }
+        M5.Lcd.printf("%.1f W", device->power);
         y += 15;
     }
     
     // Battery SOC (State of Charge) - for Smart Shunt
-    if (device->type == DEVICE_SMART_SHUNT && device->batterySOC >= 0) {
+    if (device->hasSOC) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Battery:");
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(80, y);
-        if (device->dataValid) {
-            uint16_t color = WHITE;
-            if (device->batterySOC <= 20) {
-                color = RED;
-            } else if (device->batterySOC <= 50) {
-                color = YELLOW;
-            } else {
-                color = GREEN;
-            }
-            M5.Lcd.setTextColor(color, BLACK);
-            M5.Lcd.printf("%.1f %%", device->batterySOC);
-            M5.Lcd.setTextColor(WHITE, BLACK);
+        uint16_t color = WHITE;
+        if (device->batterySOC <= 20) {
+            color = RED;
+        } else if (device->batterySOC <= 50) {
+            color = YELLOW;
         } else {
-            M5.Lcd.print("-- %");
+            color = GREEN;
         }
+        M5.Lcd.setTextColor(color, BLACK);
+        M5.Lcd.printf("%.1f %%", device->batterySOC);
+        M5.Lcd.setTextColor(WHITE, BLACK);
         y += 15;
     }
     
     // Temperature
-    if (device->temperature != 0) {
+    if (device->hasTemperature) {
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Temp:");
