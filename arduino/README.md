@@ -25,7 +25,7 @@ Download and install Arduino IDE 2.0 or later from [arduino.cc](https://www.ardu
 
 1. Go to **Sketch → Include Library → Manage Libraries**
 2. Search and install the following libraries:
-   - **M5StickCPlus** by M5Stack
+   - **M5StickCPlus2** by M5Stack
    - **NimBLE-Arduino** by h2zero
 
 ### 4. Open the Sketch
@@ -36,7 +36,7 @@ Download and install Arduino IDE 2.0 or later from [arduino.cc](https://www.ardu
 ### 5. Configure Board Settings
 
 1. Go to **Tools → Board** and select **M5Stick-C**
-2. Go to **Tools → Port** and select the port your M5StickC PLUS is connected to
+2. Go to **Tools → Port** and select the port your M5StickC PLUS2 is connected to
 3. Other settings should be at default:
    - Upload Speed: 1500000
    - CPU Frequency: 240MHz
@@ -47,10 +47,10 @@ Download and install Arduino IDE 2.0 or later from [arduino.cc](https://www.ardu
 
 ### 6. Upload
 
-1. Connect your M5StickC PLUS via USB
+1. Connect your M5StickC PLUS2 via USB
 2. Click the **Upload** button (→)
 3. Wait for compilation and upload to complete
-4. The M5StickC PLUS will automatically restart and run the program
+4. The M5StickC PLUS2 will automatically restart and run the program
 
 ## Usage
 
@@ -69,14 +69,14 @@ This Arduino version includes all the same features as the PlatformIO version:
 
 ### Compilation Errors
 
-**"M5StickCPlus.h: No such file or directory"**
-- Install the M5StickCPlus library via Library Manager
+**"M5StickCPlus2.h: No such file or directory"**
+- Install the M5StickCPlus2 library via Library Manager
 
 **"NimBLEDevice.h: No such file or directory"**
 - Install the NimBLE-Arduino library via Library Manager
 
 **"error: 'class M5Display' has no member named 'drawLine'"**
-- Update M5StickCPlus library to the latest version
+- Update M5StickCPlus2 library to the latest version
 
 ### Upload Errors
 
@@ -88,14 +88,14 @@ This Arduino version includes all the same features as the PlatformIO version:
 
 **"Timed out waiting for packet header"**
 - Lower upload speed: Tools → Upload Speed → 921600 or 115200
-- Reset M5StickC PLUS before uploading
+- Reset M5StickC PLUS2 before uploading
 
 ### Runtime Issues
 
 **"No devices found!"**
 - Ensure Victron device is powered on
 - Enable Instant Readout mode on Victron device
-- Move M5StickC PLUS closer to the Victron device
+- Move M5StickC PLUS2 closer to the Victron device
 - Check that BLE is enabled on Victron device
 
 **Display is blank**

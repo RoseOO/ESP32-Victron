@@ -2,16 +2,17 @@
 
 ## Required Hardware
 
-### M5StickC PLUS
+### M5StickC PLUS2
 
-The M5StickC PLUS is a compact ESP32-based development board featuring:
-- **ESP32-PICO-D4**: Dual-core processor with integrated WiFi and BLE
+The M5StickC PLUS2 is a compact ESP32-based development board featuring:
+- **ESP32-PICO-V3-02**: Dual-core processor with integrated WiFi and BLE
 - **Display**: 1.14 inch TFT LCD (135×240 pixels)
-- **Battery**: Built-in 120mAh rechargeable lithium battery
-- **Buttons**: Power button and programmable M5 button
+- **Battery**: Built-in 200mAh rechargeable lithium battery
+- **Memory**: 8MB Flash, 2MB PSRAM
+- **Buttons**: Power button and programmable M5 button (plus Button C)
 - **Grove Port**: For additional sensors and modules
-- **IMU**: 6-axis MPU6886 (optional - not used in this project)
-- **Microphone**: SPM1423 (optional - not used in this project)
+- **IMU**: 6-axis IMU (optional - not used in this project)
+- **Microphone**: Built-in microphone (optional - not used in this project)
 
 **Purchase**: Available from M5Stack official store, Adafruit, SparkFun, and other electronics retailers.
 
@@ -68,7 +69,7 @@ For the monitor to work, Victron devices must be in "Instant Readout" mode (unen
    - "Blue Smart Charger HQ..."
 4. The device should be visible without needing to pair
 
-## M5StickC PLUS Setup
+## M5StickC PLUS2 Setup
 
 ### Initial Programming
 
@@ -84,15 +85,15 @@ For the monitor to work, Victron devices must be in "Instant Readout" mode (unen
    code .
    ```
 
-3. **Connect M5StickC PLUS**:
-   - Connect your M5StickC PLUS via USB-C cable
+3. **Connect M5StickC PLUS2**:
+   - Connect your M5StickC PLUS2 via USB-C cable
    - Press the power button to turn it on (if not already on)
 
 4. **Upload Firmware**:
    - Click the PlatformIO icon in VS Code
-   - Select "Upload" under the m5stick-c-plus environment
+   - Select "Upload" under the m5stick-c-plus2 environment
    - Wait for compilation and upload to complete
-   - The M5StickC PLUS should automatically restart and run the program
+   - The M5StickC PLUS2 should automatically restart and run the program
 
 ### Alternative: Using Arduino IDE
 
@@ -106,9 +107,9 @@ If you prefer Arduino IDE:
    - Tools → Board → Boards Manager → Search "ESP32" → Install
 3. Install required libraries:
    - Sketch → Include Library → Manage Libraries
-   - Search and install: "M5StickCPlus", "NimBLE-Arduino"
+   - Search and install: "M5StickCPlus2", "NimBLE-Arduino"
 4. Select board: Tools → Board → ESP32 Arduino → M5Stick-C
-5. Select port: Tools → Port → (your M5StickC PLUS port)
+5. Select port: Tools → Port → (your M5StickC PLUS2 port)
 6. Copy code from `src/main.cpp` to Arduino IDE
 7. Click Upload
 
@@ -118,7 +119,7 @@ If you prefer Arduino IDE:
 
 For best BLE signal reception:
 
-1. **Distance**: Keep M5StickC PLUS within 5-10 meters of Victron devices
+1. **Distance**: Keep M5StickC PLUS2 within 5-10 meters of Victron devices
 2. **Obstacles**: Minimize metal objects and walls between devices
 3. **Interference**: Keep away from:
    - WiFi routers (especially 2.4 GHz)
@@ -127,7 +128,7 @@ For best BLE signal reception:
 
 ### Mounting Options
 
-The M5StickC PLUS has multiple mounting options:
+The M5StickC PLUS2 has multiple mounting options:
 
 1. **Magnetic Mount**: Use the built-in magnetic mount on the back
 2. **Wall Mount**: Use the Grove port with M5Stack mounting accessories
@@ -142,7 +143,7 @@ The M5StickC PLUS has multiple mounting options:
 
 ## Troubleshooting Hardware Issues
 
-### M5StickC PLUS Not Powering On
+### M5StickC PLUS2 Not Powering On
 - Charge the device (red LED indicates charging)
 - Long press the power button (2-3 seconds)
 - Try connecting to USB power
@@ -152,7 +153,7 @@ The M5StickC PLUS has multiple mounting options:
 - Check Instant Readout mode is enabled on Victron device
 - Ensure devices are within range (try moving closer)
 - Check for interference from other wireless devices
-- Restart both M5StickC PLUS and Victron device
+- Restart both M5StickC PLUS2 and Victron device
 
 ### Display Issues
 - Screen too dim: Adjust brightness in code
@@ -191,14 +192,14 @@ To extend battery life, consider these modifications in `main.cpp`:
 
 ### Continuous Operation
 
-For 24/7 monitoring, keep the M5StickC PLUS connected to USB power:
+For 24/7 monitoring, keep the M5StickC PLUS2 connected to USB power:
 - Use any USB power adapter (5V, min 500mA)
 - Can use a powerbank for outdoor/portable installations
 - Battery will stay charged while connected
 
 ## Safety Considerations
 
-- Do not expose M5StickC PLUS to water (it is not waterproof)
+- Do not expose M5StickC PLUS2 to water (it is not waterproof)
 - Keep away from extreme temperatures (operating range: 0°C to 50°C)
 - Do not short circuit or damage the battery
 - Use proper cable management in vehicle/marine installations

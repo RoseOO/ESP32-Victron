@@ -251,7 +251,7 @@ With default settings (30 second interval):
 
 ### Battery Life
 
-For M5StickC PLUS running on battery:
+For M5StickC PLUS2 running on battery:
 - WiFi and MQTT active: ~2-3 hours
 - Consider USB power or external battery for continuous operation
 

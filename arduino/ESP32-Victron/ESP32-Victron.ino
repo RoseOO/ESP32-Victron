@@ -1,22 +1,22 @@
 /*
- * ESP32-Victron BLE Monitor for M5StickC PLUS
+ * ESP32-Victron BLE Monitor for M5StickC PLUS2
  * 
  * This sketch monitors Victron Energy devices (Smart Shunt, Smart Solar, Blue Smart Charger)
- * via Bluetooth Low Energy and displays the data on the M5StickC PLUS screen.
+ * via Bluetooth Low Energy and displays the data on the M5StickC PLUS2 screen.
  * 
  * Hardware Required:
- * - M5StickC PLUS
+ * - M5StickC PLUS2
  * - Victron Energy device with BLE (in Instant Readout mode)
  * 
  * Libraries Required:
- * - M5StickCPlus (https://github.com/m5stack/M5StickC-Plus)
+ * - M5StickCPlus2 (https://github.com/m5stack/M5StickCPlus2)
  * - NimBLE-Arduino (https://github.com/h2zero/NimBLE-Arduino)
  * 
  * Author: ESP32-Victron Project
  * License: MIT
  */
 
-#include <M5StickCPlus.h>
+#include <M5StickCPlus2.h>
 #include <NimBLEDevice.h>
 #include <map>
 #include <vector>
@@ -120,7 +120,7 @@ public:
 };
 
 void setup() {
-    // Initialize M5StickC PLUS
+    // Initialize M5StickC PLUS2
     M5.begin();
     M5.Lcd.setRotation(1);
     M5.Lcd.fillScreen(BLACK);
@@ -130,7 +130,7 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
     
-    Serial.println("M5StickC PLUS - Victron BLE Monitor");
+    Serial.println("M5StickC PLUS2 - Victron BLE Monitor");
     
     // Display splash screen
     M5.Lcd.setCursor(10, 20);

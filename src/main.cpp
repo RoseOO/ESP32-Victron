@@ -1,4 +1,4 @@
-#include <M5StickCPlus.h>
+#include <M5StickCPlus2.h>
 #include "VictronBLE.h"
 #include "WebConfigServer.h"
 #include "MQTTPublisher.h"
@@ -23,7 +23,7 @@ void updateDeviceList();
 void drawDisplay();
 
 void setup() {
-    // Initialize M5StickC PLUS
+    // Initialize M5StickC PLUS2
     M5.begin();
     M5.Lcd.setRotation(1);  // Landscape orientation
     M5.Lcd.fillScreen(BLACK);
@@ -33,7 +33,7 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
     
-    Serial.println("M5StickC PLUS - Victron BLE Monitor");
+    Serial.println("M5StickC PLUS2 - Victron BLE Monitor");
     
     // Display splash screen
     M5.Lcd.setCursor(10, 20);

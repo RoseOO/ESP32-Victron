@@ -1,10 +1,10 @@
 # Quick Start Guide
 
-Get your M5StickC PLUS displaying Victron data in under 10 minutes!
+Get your M5StickC PLUS2 displaying Victron data in under 10 minutes!
 
 ## What You Need
 
-✅ M5StickC PLUS board  
+✅ M5StickC PLUS2 board  
 ✅ USB-C cable  
 ✅ Computer with Arduino IDE or PlatformIO  
 ✅ Victron device with Bluetooth (Smart Shunt, Smart Solar, or Blue Smart Charger)  
@@ -36,7 +36,7 @@ Pick one:
    - Tools → Board → Boards Manager → Search "ESP32" → Install
 3. Install libraries:
    - Sketch → Include Library → Manage Libraries
-   - Install: **M5StickCPlus** and **NimBLE-Arduino**
+   - Install: **M5StickCPlus2** and **NimBLE-Arduino**
 
 #### Option B: PlatformIO (Advanced)
 
@@ -58,7 +58,7 @@ Pick one:
 
 ### Step 4: Upload (2 minutes)
 
-1. Connect M5StickC PLUS via USB-C cable
+1. Connect M5StickC PLUS2 via USB-C cable
 2. Press power button on M5StickC to turn it on
 3. Click **Upload** button
 4. Wait for "Upload complete" message
@@ -68,7 +68,7 @@ Pick one:
 ### Step 5: First Run & Web Configuration (2 minutes)
 
 1. **Initial Boot**:
-   - M5StickC PLUS will restart automatically
+   - M5StickC PLUS2 will restart automatically
    - You'll see "Starting WiFi..." then "Starting BLE..."
    - Device creates WiFi access point "Victron-Config"
 
@@ -171,7 +171,7 @@ The web interface allows you to:
 **Solutions**:
 - Long press power button to wake up
 - Check if upload completed successfully
-- Verify M5StickC PLUS is charged (connect to USB)
+- Verify M5StickC PLUS2 is charged (connect to USB)
 
 ## Next Steps
 
@@ -200,7 +200,7 @@ See [examples/CONFIGURATION.md](examples/CONFIGURATION.md) for code examples.
 
 ### Monitor Multiple Locations
 
-If you have multiple M5StickC PLUS devices, you can:
+If you have multiple M5StickC PLUS2 devices, you can:
 - Place one near solar panels (for Smart Solar)
 - Place one near batteries (for Smart Shunt)
 - Place one near AC charger (for Blue Smart Charger)
@@ -239,7 +239,7 @@ If you have multiple M5StickC PLUS devices, you can:
 
 ## Success Checklist
 
-- [ ] M5StickC PLUS powered on and displays content
+- [ ] M5StickC PLUS2 powered on and displays content
 - [ ] At least one Victron device detected
 - [ ] Voltage and current values displaying (not "-- V")
 - [ ] RSSI signal strength shown (around -40 to -80)
@@ -260,6 +260,6 @@ If you have multiple M5StickC PLUS devices, you can:
 
 **Estimated Total Setup Time**: 5-10 minutes  
 **Skill Level**: Beginner to Intermediate  
-**Cost**: ~$30 (M5StickC PLUS) + Victron device (already owned)
+**Cost**: ~$40 (M5StickC PLUS2) + Victron device (already owned)
 
 Happy Monitoring! 🔋⚡📊
