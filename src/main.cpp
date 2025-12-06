@@ -1,11 +1,18 @@
 #include <M5StickCPlus2.h>
+#include <Arduino.h>
+#include <vector>
+
+// Add the project headers that define the classes/types used below.
+// Adjust filenames if your headers use different names/paths.
 #include "VictronBLE.h"
 #include "WebConfigServer.h"
 #include "MQTTPublisher.h"
 
-VictronBLE victron;
-WebConfigServer webServer;
-MQTTPublisher mqttPublisher;
+// change globals to pointers to avoid constructor-side effects
+VictronBLE *victron = nullptr;
+WebConfigServer *webServer = nullptr;
+MQTTPublisher *mqttPublisher = nullptr;
+
 std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
@@ -23,138 +30,54 @@ void updateDeviceList();
 void drawDisplay();
 
 void setup() {
-    // Initialize M5StickC PLUS2
-    M5.begin();
-    M5.Lcd.setRotation(1);  // Landscape orientation
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setTextColor(WHITE, BLACK);
-    
     Serial.begin(115200);
-    delay(1000);
-    
-    Serial.println("M5StickC PLUS2 - Victron BLE Monitor");
-    
-    // Display splash screen
-    M5.Lcd.setCursor(10, 20);
+    delay(200);
+    Serial.println("STARTUP: Serial ready");
+
+    Serial.println("STARTUP: calling M5.begin()");
+    M5.begin();
+    Serial.println("STARTUP: M5.begin() returned");
+
+    // instantiate objects (no heavy init in constructors)
+    Serial.println("STARTUP: new VictronBLE/WebConfigServer/MQTTPublisher");
+    victron = new VictronBLE();
+    webServer = new WebConfigServer();
+    mqttPublisher = new MQTTPublisher();
+    Serial.println("STARTUP: allocations done");
+
+    // Basic display sanity test
+    M5.Lcd.setRotation(1);
+    M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(2);
-    M5.Lcd.println("Victron BLE");
-    M5.Lcd.setCursor(10, 50);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.println("Initializing...");
-    
-    // Initialize Web Configuration Server
-    M5.Lcd.setCursor(10, 65);
-    M5.Lcd.println("Starting WiFi...");
-    webServer.begin();
-    
-    // Set VictronBLE instance for live data in web interface
-    webServer.setVictronBLE(&victron);
-    
-    // Initialize MQTT Publisher
-    M5.Lcd.setCursor(10, 75);
-    M5.Lcd.println("Initializing MQTT...");
-    mqttPublisher.begin(&victron);
-    webServer.setMQTTPublisher(&mqttPublisher);
-    
-    // Load device configurations and apply encryption keys
-    auto& configs = webServer.getDeviceConfigs();
-    for (auto& config : configs) {
-        if (!config.encryptionKey.isEmpty()) {
-            victron.setEncryptionKey(config.address, config.encryptionKey);
-            Serial.printf("Loaded encryption key for %s\n", config.address.c_str());
-        }
-    }
-    
-    // Initialize Victron BLE
-    M5.Lcd.setCursor(10, 90);
-    M5.Lcd.println("Starting BLE...");
-    victron.begin();
-    
-    delay(1000);
-    
-    // Show web interface info
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(5, 10);
-    M5.Lcd.setTextColor(CYAN, BLACK);
-    M5.Lcd.println("Web Config Available!");
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(5, 28);
-    
-    if (webServer.isAPMode()) {
-        M5.Lcd.println("WiFi: Victron-Config");
-        M5.Lcd.setCursor(5, 43);
-        M5.Lcd.print("IP: ");
-        M5.Lcd.println(webServer.getIPAddress());
-    } else {
-        M5.Lcd.println("WiFi: Connected");
-        M5.Lcd.setCursor(5, 43);
-        M5.Lcd.print("IP: ");
-        M5.Lcd.println(webServer.getIPAddress());
-    }
-    
-    M5.Lcd.setCursor(5, 60);
-    M5.Lcd.setTextColor(YELLOW, BLACK);
-    M5.Lcd.println("Open in browser to");
-    M5.Lcd.setCursor(5, 75);
-    M5.Lcd.println("configure devices");
-    
-    M5.Lcd.setCursor(5, 100);
-    M5.Lcd.setTextColor(DARKGREY, BLACK);
-    M5.Lcd.println("Hold M5 to continue...");
-    
-    // Wait for button press or timeout
-    unsigned long waitStart = millis();
-    while (millis() - waitStart < 5000) {
-        M5.update();
-        if (M5.BtnA.wasPressed()) {
-            break;
-        }
-        delay(50);  // Reduced delay for better responsiveness
-    }
-    
-    // Initial scan
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setCursor(10, 20);
-    M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.println("Scanning for");
-    M5.Lcd.setCursor(10, 35);
-    M5.Lcd.println("Victron devices...");
-    
-    victron.scan(5);
-    
-    // Build device list
+    M5.Lcd.setCursor(10, 10);
+    M5.Lcd.println("Victron Monitor");
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setCursor(10, 40);
+    M5.Lcd.println("Startup OK");
+    delay(500);
+
+    // Try enabling Victron BLE (enable one-by-one so you can see failures)
+    Serial.println("STARTUP: attempting victron->begin()");
+    victron->begin();
+    Serial.println("STARTUP: victron->begin() returned");
+
+    Serial.println("STARTUP: doing a short scan to populate devices");
+    victron->scan(2);            // short scan
     updateDeviceList();
-    
-    lastScanTime = millis();
-    
-    if (deviceAddresses.empty()) {
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setCursor(10, 20);
-        M5.Lcd.setTextColor(RED, BLACK);
-        M5.Lcd.println("No devices found!");
-        M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(10, 40);
-        M5.Lcd.setTextSize(1);
-        M5.Lcd.println("Please ensure:");
-        M5.Lcd.setCursor(10, 55);
-        M5.Lcd.println("- Device is on");
-        M5.Lcd.setCursor(10, 68);
-        M5.Lcd.println("- BLE is enabled");
-        M5.Lcd.setCursor(10, 81);
-        M5.Lcd.println("- In range");
-        M5.Lcd.setCursor(10, 96);
-        M5.Lcd.setTextColor(CYAN, BLACK);
-        M5.Lcd.println("Or configure via web");
+
+    if (!deviceAddresses.empty()) {
+        drawDisplay();
     } else {
-        Serial.printf("Found %d device(s)\n", deviceAddresses.size());
+        Serial.println("STARTUP: no devices found yet - showing basic screen");
     }
+
+    // Leave setup so loop() runs normally (do NOT block here)
 }
 
 void updateDeviceList() {
     deviceAddresses.clear();
-    auto& devices = victron.getDevices();
+    auto& devices = victron->getDevices();
     for (auto& pair : devices) {
         deviceAddresses.push_back(pair.first);
     }
@@ -175,7 +98,7 @@ void drawDisplay() {
         
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(5, 25);
-        if (webServer.isAPMode()) {
+        if (webServer->isAPMode()) {
             M5.Lcd.println("Mode: Access Point");
             M5.Lcd.setCursor(5, 40);
             M5.Lcd.println("SSID: Victron-Config");
@@ -185,14 +108,14 @@ void drawDisplay() {
         
         M5.Lcd.setCursor(5, 55);
         M5.Lcd.print("IP: ");
-        M5.Lcd.println(webServer.getIPAddress());
+        M5.Lcd.println(webServer->getIPAddress());
         
         M5.Lcd.setCursor(5, 75);
         M5.Lcd.setTextColor(YELLOW, BLACK);
         M5.Lcd.println("Open in web browser:");
         M5.Lcd.setCursor(5, 90);
         M5.Lcd.print("http://");
-        M5.Lcd.println(webServer.getIPAddress());
+        M5.Lcd.println(webServer->getIPAddress());
         
         M5.Lcd.drawLine(0, 110, 240, 110, DARKGREY);
         M5.Lcd.setTextSize(1);
@@ -206,7 +129,7 @@ void drawDisplay() {
         return;
     }
     
-    VictronDeviceData* device = victron.getDevice(deviceAddresses[currentDeviceIndex]);
+    VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
     
     if (!device) {
         return;
@@ -425,7 +348,7 @@ void loop() {
     if (!webConfigMode && currentTime - lastScanTime > SCAN_INTERVAL && !scanning) {
         scanning = true;
         Serial.println("Periodic scan...");
-        victron.scan(2);  // Quick 2-second scan
+        victron->scan(2);  // Quick 2-second scan
         updateDeviceList();
         lastScanTime = currentTime;
         scanning = false;
@@ -444,7 +367,7 @@ void loop() {
     }
     
     // Handle MQTT publishing
-    mqttPublisher.loop();
+    mqttPublisher->loop();
     
     delay(10);
 }
