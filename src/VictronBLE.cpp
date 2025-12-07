@@ -176,114 +176,36 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     device.dataValid = true;
     device.errorMessage = "";  // Clear any previous error message
     
-    // Determine where to start parsing records
-    // For encrypted data: records start at byte 10 (after header + IV + key check byte)
-    // For unencrypted data: records start at byte 5 (after manufacturer ID, model ID, and readout type)
-    size_t pos = isEncrypted ? 10 : 5;
+    // Determine where the payload data starts
+    // For encrypted data: payload starts at byte 10 (after header + IV + key check byte)
+    // For unencrypted data: payload starts at byte 5 (after manufacturer ID, model ID, and readout type)
+    size_t payloadStart = isEncrypted ? 10 : 5;
     
-    while (pos < length) {
-        if (pos + 1 >= length) break;
-        
-        uint8_t recordType = dataToProcess[pos];
-        uint8_t recordLen = dataToProcess[pos + 1];
-        
-        if (pos + 2 + recordLen > length) break;
-        
-        const uint8_t* recordData = &dataToProcess[pos + 2];
-        
-        // Store parsed record for debug purposes
-        VictronRecord rec;
-        rec.type = recordType;
-        rec.length = recordLen;
-        if (recordLen <= sizeof(rec.data)) {
-            memcpy(rec.data, recordData, recordLen);
-            device.parsedRecords.push_back(rec);
-        } else {
-            // Log when records are too large to store
-            Serial.printf("Warning: Record type 0x%02X length %d exceeds buffer size, skipping\n", 
-                         recordType, recordLen);
-        }
-        
-        switch (recordType) {
-            case BATTERY_VOLTAGE:
-            case SOLAR_CHARGER_VOLTAGE:
-            case CHARGER_VOLTAGE:
-                device.voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasVoltage = true;
-                break;
-                
-            case BATTERY_CURRENT:
-            case SOLAR_CHARGER_CURRENT:
-            case CHARGER_CURRENT:
-                device.current = decodeValue(recordData, recordLen, 0.001); // 1mA resolution
-                device.hasCurrent = true;
-                break;
-                
-            case BATTERY_POWER:
-                device.power = decodeValue(recordData, recordLen, 1.0);
-                device.hasPower = true;
-                break;
-                
-            case BATTERY_SOC:
-                device.batterySOC = decodeValue(recordData, recordLen, 0.01); // 0.01% resolution
-                device.hasSOC = true;
-                break;
-                
-            case BATTERY_TEMPERATURE:
-            case EXTERNAL_TEMPERATURE:
-                device.temperature = decodeValue(recordData, recordLen, 0.01) - 273.15; // Kelvin to Celsius
-                device.hasTemperature = true;
-                break;
-                
-            case CONSUMED_AH:
-                device.consumedAh = decodeValue(recordData, recordLen, 0.1);
-                break;
-                
-            case TIME_TO_GO:
-                device.timeToGo = (int)decodeValue(recordData, recordLen, 1.0);
-                break;
-                
-            case DEVICE_STATE:
-                device.deviceState = (int)decodeValue(recordData, recordLen, 1.0);
-                break;
-                
-            case ALARM:
-                device.alarmState = (int)decodeValue(recordData, recordLen, 1.0);
-                break;
-                
-            // Inverter specific records
-            case AC_OUT_VOLTAGE:
-                device.acOutVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasAcOut = true;
-                break;
-                
-            case AC_OUT_CURRENT:
-                device.acOutCurrent = decodeValue(recordData, recordLen, 0.1); // 100mA resolution
-                device.hasAcOut = true;
-                break;
-                
-            case AC_OUT_POWER:
-                device.acOutPower = decodeValue(recordData, recordLen, 1.0); // 1W resolution
-                device.hasAcOut = true;
-                break;
-                
-            // DC-DC Converter specific records
-            case INPUT_VOLTAGE:
-                device.inputVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasInputVoltage = true;
-                break;
-                
-            case OUTPUT_VOLTAGE:
-                device.outputVoltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasOutputVoltage = true;
-                break;
-                
-            case OFF_REASON:
-                device.offReason = (int)decodeValue(recordData, recordLen, 1.0);
-                break;
-        }
-        
-        pos += 2 + recordLen;
+    // The decrypted/unencrypted payload contains a 16-byte fixed structure
+    // The structure varies by device type (SmartShunt vs Solar Controller vs DC-DC, etc.)
+    // According to the reference implementation, we need to parse this as a fixed structure,
+    // NOT as TLV records
+    
+    if (length < payloadStart + 16) {
+        Serial.printf("Warning: Insufficient data for fixed structure parsing (%d bytes, need %d)\n", 
+                     length, payloadStart + 16);
+    }
+    
+    // Point to the 16-byte fixed structure payload
+    const uint8_t* output = &dataToProcess[payloadStart];
+    size_t outputLen = length - payloadStart;
+    
+    // Parse based on device type
+    if (device.type == DEVICE_SMART_SHUNT) {
+        parseSmartShuntData(output, outputLen, device);
+    } else if (device.type == DEVICE_SMART_SOLAR) {
+        parseSolarControllerData(output, outputLen, device);
+    } else if (device.type == DEVICE_DCDC_CONVERTER) {
+        parseDCDCConverterData(output, outputLen, device);
+    } else {
+        // For unknown device types, try to parse as TLV records
+        // This provides backwards compatibility for devices we haven't specifically implemented
+        parseTLVRecords(dataToProcess, length, payloadStart, device);
     }
     
     if (decryptedBuffer) {
@@ -501,4 +423,329 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     
     Serial.printf("Successfully decrypted %d bytes of data\n", encryptedPayloadLength);
     return true;
+}
+
+// Helper functions for multi-byte value extraction
+
+// Extract signed 16-bit value (little-endian with sign bit)
+int16_t VictronBLE::extractSigned16(const uint8_t* data, int byteIndex) {
+    bool neg = (data[byteIndex + 1] & 0x80) >> 7;  // extract sign bit from MSB
+    int16_t value = ((data[byteIndex + 1] & 0x7F) << 8) | data[byteIndex];  // exclude sign bit
+    if (neg) value = value - 32768;  // 2's complement = val - 2^(b-1), b=16
+    return value;
+}
+
+// Extract unsigned 16-bit value (little-endian)
+uint16_t VictronBLE::extractUnsigned16(const uint8_t* data, int byteIndex) {
+    return (data[byteIndex + 1] << 8) | data[byteIndex];
+}
+
+// Extract signed 22-bit value (spread across 3 bytes, little-endian)
+// Battery current for SmartShunt: bytes 8-10
+int32_t VictronBLE::extractSigned22(const uint8_t* data, int startByte) {
+    bool neg = (data[startByte + 2] & 0x80) >> 7;  // bit 21 (sign bit)
+    int32_t value = ((data[startByte] & 0xFC) >> 2) + ((data[startByte + 1] & 0x03) << 6) |  // bits 0-7
+                   (((data[startByte + 1] & 0xFC) >> 2) + ((data[startByte + 2] & 0x03) << 6) << 8) |  // bits 8-15
+                   (((data[startByte + 2] & 0x7C) >> 2) << 16);  // bits 16-20
+    if (neg) value = value - 2097152;  // 2's complement = val - 2^(b-1), b=22
+    return value;
+}
+
+// Extract unsigned 20-bit value (spread across 3 bytes, little-endian)
+// Consumed Ah for SmartShunt: bytes 11-13 (lower 4 bits of byte 13)
+uint32_t VictronBLE::extractUnsigned20(const uint8_t* data, int startByte) {
+    return data[startByte] |                     // bits 0-7
+          (data[startByte + 1] << 8) |           // bits 8-15
+          ((data[startByte + 2] & 0x0F) << 16);  // bits 16-19
+}
+
+// Extract unsigned 10-bit value (spread across 2 bytes)
+// State of Charge for SmartShunt: bytes 13-14 (upper 4 bits of byte 13, bits 0-5 of byte 14)
+uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
+    return ((data[startByte] & 0xF0) >> 4) |    // bits 0-3
+           ((data[startByte + 1] & 0x0F) << 4) |  // bits 4-7
+           ((data[startByte + 1] & 0x30) << 4);   // bits 8-9
+}
+
+// Parse SmartShunt data (16-byte fixed structure)
+// Based on VBM.cpp from reference implementation
+void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device) {
+    if (length < 16) {
+        Serial.printf("SmartShunt: Insufficient data (%d bytes, need 16)\n", length);
+        return;
+    }
+    
+    // Time To Go (bytes 0-1, little-endian, unsigned 16-bit, units: minutes)
+    uint16_t ttgMinutes = extractUnsigned16(output, 0);
+    if (ttgMinutes != 0xFFFF) {
+        device.timeToGo = ttgMinutes;
+    }
+    
+    // Battery Voltage (bytes 2-3, signed 16-bit, units: 10mV)
+    int16_t battMv10 = extractSigned16(output, 2);
+    if (battMv10 != 0x7FFF) {
+        device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+        device.hasVoltage = true;
+    }
+    
+    // Alarm bits (bytes 4-5)
+    device.alarmState = extractUnsigned16(output, 4);
+    
+    // Auxiliary input (bytes 6-7)
+    // The type is determined by bits 0-1 of byte 8
+    device.auxMode = output[8] & 0x03;
+    
+    if (device.auxMode == 0) {
+        // Aux voltage (signed 16-bit, units: 10mV)
+        int16_t auxMv10 = extractSigned16(output, 6);
+        if (auxMv10 != 0x7FFF) {
+            device.auxVoltage = auxMv10 / 100.0f;
+        }
+    } else if (device.auxMode == 1) {
+        // Mid-point voltage (unsigned 16-bit, units: 10mV)
+        uint16_t midMv10 = extractUnsigned16(output, 6);
+        if (midMv10 != 0xFFFF) {
+            device.midVoltage = midMv10 / 100.0f;
+        }
+    } else if (device.auxMode == 2) {
+        // Temperature (unsigned 16-bit, units: 10mK = 0.01K)
+        uint16_t tempK01 = extractUnsigned16(output, 6);
+        if (tempK01 != 0xFFFF) {
+            device.temperature = (tempK01 / 100.0f) - 273.15;  // convert 0.01K to Celsius
+            device.hasTemperature = true;
+        }
+    }
+    
+    // Battery Current (bytes 8-10, signed 22-bit, units: mA)
+    int32_t battMa = extractSigned22(output, 8);
+    if (battMa != 0x1FFFFF) {
+        device.current = battMa / 1000.0f;  // convert mA to A
+        device.hasCurrent = true;
+        
+        // Calculate power if we have both voltage and current
+        if (device.hasVoltage) {
+            device.power = device.voltage * device.current;
+            device.hasPower = true;
+        }
+    }
+    
+    // Consumed Ah (bytes 11-13, unsigned 20-bit, units: 100mAh = 0.1Ah)
+    uint32_t consumedAh01 = extractUnsigned20(output, 11);
+    if (consumedAh01 != 0xFFFFF) {
+        device.consumedAh = consumedAh01 / 10.0f;  // convert 0.1Ah to Ah
+    }
+    
+    // State of Charge (bytes 13-14, unsigned 10-bit, units: 0.1%)
+    uint16_t soc01 = extractUnsigned10(output, 13);
+    if (soc01 != 0x3FF) {
+        device.batterySOC = soc01 / 10.0f;  // convert 0.1% to %
+        device.hasSOC = true;
+    }
+    
+    Serial.printf("SmartShunt parsed: V=%.2f, A=%.3f, SOC=%.1f%%, Ah=%.1f\n", 
+                 device.voltage, device.current, device.batterySOC, device.consumedAh);
+}
+
+// Parse Solar Controller data (16-byte fixed structure)
+// Based on VSC.cpp from reference implementation
+void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device) {
+    if (length < 16) {
+        Serial.printf("SolarController: Insufficient data (%d bytes, need 16)\n", length);
+        return;
+    }
+    
+    // Device State (byte 0)
+    device.deviceState = output[0];
+    
+    // Charger Error (byte 1)
+    device.chargerError = output[1];
+    
+    // Battery Voltage (bytes 2-3, signed 16-bit, units: 10mV)
+    int16_t battMv10 = extractSigned16(output, 2);
+    if (battMv10 != 0x7FFF) {
+        device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+        device.hasVoltage = true;
+    }
+    
+    // Battery Current (bytes 4-5, signed 16-bit, units: 100mA)
+    int16_t battMa100 = extractSigned16(output, 4);
+    if (battMa100 != 0x7FFF) {
+        device.current = battMa100 / 10.0f;  // convert 100mA to A
+        device.hasCurrent = true;
+        
+        // Calculate power if we have both voltage and current
+        if (device.hasVoltage) {
+            device.power = device.voltage * device.current;
+            device.hasPower = true;
+        }
+    }
+    
+    // Yield Today (bytes 6-7, unsigned 16-bit, units: 10Wh = 0.01kWh)
+    uint16_t yieldWh10 = extractUnsigned16(output, 6);
+    if (yieldWh10 != 0xFFFF) {
+        device.yieldToday = yieldWh10 / 100.0f;  // convert 10Wh to kWh
+    }
+    
+    // PV Power (bytes 8-9, unsigned 16-bit, units: W)
+    uint16_t pvW = extractUnsigned16(output, 8);
+    if (pvW != 0xFFFF) {
+        device.pvPower = pvW;
+    }
+    
+    // Load Current (bytes 10-11, partially used, units: 100mA)
+    // Only 9 bits are used: bit 0 of byte 11 + all 8 bits of byte 10
+    uint16_t loadMa100 = ((output[11] & 0x01) << 8) | output[10];
+    if (loadMa100 != 0x1FF) {
+        device.loadCurrent = loadMa100 / 10.0f;  // convert 100mA to A
+    }
+    
+    Serial.printf("SolarController parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
+                 device.voltage, device.current, device.pvPower, device.yieldToday, 
+                 device.deviceState, device.chargerError);
+}
+
+// Parse DC-DC Converter data (16-byte fixed structure)
+// This is a best-guess implementation as the reference doesn't include DC-DC specific code
+// We'll try to extract basic parameters similar to solar controller
+void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device) {
+    if (length < 16) {
+        Serial.printf("DCDC: Insufficient data (%d bytes, need 16)\n", length);
+        return;
+    }
+    
+    // Device State (byte 0)
+    device.deviceState = output[0];
+    
+    // Error code (byte 1)
+    device.chargerError = output[1];
+    
+    // Input Voltage (bytes 2-3, signed 16-bit, units: 10mV)
+    int16_t inputMv10 = extractSigned16(output, 2);
+    if (inputMv10 != 0x7FFF) {
+        device.inputVoltage = inputMv10 / 100.0f;
+        device.hasInputVoltage = true;
+    }
+    
+    // Output Voltage (bytes 4-5, signed 16-bit, units: 10mV)
+    int16_t outputMv10 = extractSigned16(output, 4);
+    if (outputMv10 != 0x7FFF) {
+        device.outputVoltage = outputMv10 / 100.0f;
+        device.hasOutputVoltage = true;
+        // Also set as general voltage for display
+        device.voltage = device.outputVoltage;
+        device.hasVoltage = true;
+    }
+    
+    // Off Reason (byte 6)
+    device.offReason = output[6];
+    
+    Serial.printf("DCDC parsed: In=%.2fV, Out=%.2fV, State=%d\n", 
+                 device.inputVoltage, device.outputVoltage, device.deviceState);
+}
+
+// Parse TLV records (fallback for unknown device types or unencrypted instant readout)
+// This provides backwards compatibility
+void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t startPos, VictronDeviceData& device) {
+    size_t pos = startPos;
+    
+    Serial.println("Parsing TLV records (fallback mode)");
+    
+    while (pos < length) {
+        if (pos + 1 >= length) break;
+        
+        uint8_t recordType = data[pos];
+        uint8_t recordLen = data[pos + 1];
+        
+        if (pos + 2 + recordLen > length) break;
+        
+        const uint8_t* recordData = &data[pos + 2];
+        
+        // Store parsed record for debug purposes
+        VictronRecord rec;
+        rec.type = recordType;
+        rec.length = recordLen;
+        if (recordLen <= sizeof(rec.data)) {
+            memcpy(rec.data, recordData, recordLen);
+            device.parsedRecords.push_back(rec);
+        }
+        
+        switch (recordType) {
+            case BATTERY_VOLTAGE:
+            case SOLAR_CHARGER_VOLTAGE:
+            case CHARGER_VOLTAGE:
+                device.voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                device.hasVoltage = true;
+                break;
+                
+            case BATTERY_CURRENT:
+            case SOLAR_CHARGER_CURRENT:
+            case CHARGER_CURRENT:
+                device.current = decodeValue(recordData, recordLen, 0.001); // 1mA resolution
+                device.hasCurrent = true;
+                break;
+                
+            case BATTERY_POWER:
+                device.power = decodeValue(recordData, recordLen, 1.0);
+                device.hasPower = true;
+                break;
+                
+            case BATTERY_SOC:
+                device.batterySOC = decodeValue(recordData, recordLen, 0.01); // 0.01% resolution
+                device.hasSOC = true;
+                break;
+                
+            case BATTERY_TEMPERATURE:
+            case EXTERNAL_TEMPERATURE:
+                device.temperature = decodeValue(recordData, recordLen, 0.01) - 273.15; // Kelvin to Celsius
+                device.hasTemperature = true;
+                break;
+                
+            case CONSUMED_AH:
+                device.consumedAh = decodeValue(recordData, recordLen, 0.1);
+                break;
+                
+            case TIME_TO_GO:
+                device.timeToGo = (int)decodeValue(recordData, recordLen, 1.0);
+                break;
+                
+            case DEVICE_STATE:
+                device.deviceState = (int)decodeValue(recordData, recordLen, 1.0);
+                break;
+                
+            case ALARM:
+                device.alarmState = (int)decodeValue(recordData, recordLen, 1.0);
+                break;
+                
+            case AC_OUT_VOLTAGE:
+                device.acOutVoltage = decodeValue(recordData, recordLen, 0.01);
+                device.hasAcOut = true;
+                break;
+                
+            case AC_OUT_CURRENT:
+                device.acOutCurrent = decodeValue(recordData, recordLen, 0.1);
+                device.hasAcOut = true;
+                break;
+                
+            case AC_OUT_POWER:
+                device.acOutPower = decodeValue(recordData, recordLen, 1.0);
+                device.hasAcOut = true;
+                break;
+                
+            case INPUT_VOLTAGE:
+                device.inputVoltage = decodeValue(recordData, recordLen, 0.01);
+                device.hasInputVoltage = true;
+                break;
+                
+            case OUTPUT_VOLTAGE:
+                device.outputVoltage = decodeValue(recordData, recordLen, 0.01);
+                device.hasOutputVoltage = true;
+                break;
+                
+            case OFF_REASON:
+                device.offReason = (int)decodeValue(recordData, recordLen, 1.0);
+                break;
+        }
+        
+        pos += 2 + recordLen;
+    }
 }
