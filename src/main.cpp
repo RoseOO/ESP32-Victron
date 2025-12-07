@@ -889,8 +889,11 @@ void drawDisplay() {
                             int endPos = startPos + charsPerLine;
                             int lastSpace = reasonStr.lastIndexOf(' ', endPos);
                             int lastSemi = reasonStr.lastIndexOf(';', endPos);
+                            // Choose the rightmost valid break point (both return -1 if not found)
                             int breakPos = max(lastSpace, lastSemi);
                             
+                            // Only use break point if it's valid (within startPos and endPos)
+                            // If both lastSpace and lastSemi are -1, breakPos will be -1 and this check will fail
                             if (breakPos > startPos && breakPos <= endPos) {
                                 // Found a good break point - exclude the delimiter from the line
                                 line = reasonStr.substring(startPos, breakPos);
