@@ -107,6 +107,7 @@ struct VictronDeviceData {
     uint16_t manufacturerId;
     uint16_t modelId;
     bool encrypted;
+    String errorMessage;  // Error message when parsing fails
     std::vector<VictronRecord> parsedRecords;
     
     VictronDeviceData() : 

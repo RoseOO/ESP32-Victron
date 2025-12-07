@@ -141,6 +141,7 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     
     if (isEncrypted) {
         if (encryptionKey.isEmpty()) {
+            device.errorMessage = "Device is encrypted. Add encryption key in web configuration, or enable 'Instant Readout' in VictronConnect app.";
             Serial.printf("Device %s is encrypted but no key provided\n", device.address.c_str());
             return false;
         }
@@ -148,6 +149,7 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         // Allocate buffer for decrypted data
         decryptedBuffer = new uint8_t[length];
         if (!decryptData(data, length, decryptedBuffer, encryptionKey)) {
+            device.errorMessage = "Decryption failed. Encryption is not fully implemented. Please enable 'Instant Readout' mode.";
             delete[] decryptedBuffer;
             Serial.printf("Failed to decrypt data for %s\n", device.address.c_str());
             return false;
@@ -158,6 +160,7 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     }
     
     device.dataValid = true;
+    device.errorMessage = "";  // Clear any previous error message
     
     // Start parsing from byte 6 (after header)
     size_t pos = 6;
