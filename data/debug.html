@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Victron BLE Debug</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 24px; }
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.2s;
+            margin-left: 10px;
+        }
+        .nav-btn:hover { background: rgba(255,255,255,0.3); }
+        .content { padding: 30px; }
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .info-box strong { color: #667eea; }
+        .devices-grid {
+            display: grid;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .device-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+        .device-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        .device-type {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .device-address {
+            color: #666;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        .signal {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .signal-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        .signal-good { background: #27ae60; }
+        .signal-medium { background: #f39c12; }
+        .signal-poor { background: #e74c3c; }
+        .data-section {
+            margin-top: 15px;
+        }
+        .data-section h3 {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .raw-data {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .data-value {
+            font-weight: bold;
+            color: #333;
+            font-family: monospace;
+        }
+        .hex-data {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+        .hex-byte {
+            display: inline-block;
+            margin-right: 6px;
+            color: #00ff00;
+        }
+        .hex-offset {
+            color: #888;
+            margin-right: 10px;
+            display: inline-block;
+            width: 50px;
+        }
+        .hex-line {
+            margin-bottom: 4px;
+        }
+        .status {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .loading { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .last-update {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .record-list {
+            margin-top: 10px;
+        }
+        .record-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .record-type {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .record-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        .btn-refresh {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .btn-refresh:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 BLE Debug Console</h1>
+            <div>
+                <a href="/monitor" class="nav-btn">📊 Live Monitor</a>
+                <a href="/" class="nav-btn">⚙️ Configuration</a>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="info-box">
+                <strong>Debug Mode:</strong> This page shows raw BLE scanning data and manufacturer information from Victron devices. 
+                Use this for device identification and troubleshooting.
+            </div>
+            
+            <button class="btn-refresh" onclick="updateDebugData()">🔄 Refresh Now</button>
+            
+            <div id="debugData" class="devices-grid">
+                <div class="status loading">
+                    <p>Loading debug data...</p>
+                </div>
+            </div>
+            <div class="last-update" id="lastUpdate"></div>
+        </div>
+    </div>
+
+    <script>
+        function bytesToHex(bytes) {
+            if (!bytes || bytes.length === 0) return 'N/A';
+            let hex = '';
+            for (let i = 0; i < bytes.length; i++) {
+                if (i > 0 && i % 16 === 0) {
+                    hex += '\n';
+                }
+                if (i % 16 === 0) {
+                    hex += '<span class="hex-offset">' + ('0000' + i.toString(16).toUpperCase()).slice(-4) + ':</span>';
+                }
+                hex += '<span class="hex-byte">' + ('0' + bytes[i].toString(16).toUpperCase()).slice(-2) + '</span>';
+            }
+            return hex;
+        }
+        
+        function recordTypeName(type) {
+            const types = {
+                0x01: 'Solar Charger Voltage',
+                0x02: 'Solar Charger Current',
+                0x03: 'Battery Voltage',
+                0x04: 'Battery Current',
+                0x05: 'Battery Power',
+                0x06: 'Battery SOC',
+                0x07: 'Battery Temperature',
+                0x08: 'External Temperature',
+                0x09: 'Charger Voltage',
+                0x0A: 'Charger Current',
+                0x0B: 'Device State',
+                0x0C: 'Charger Error',
+                0x0D: 'Consumed Ah',
+                0x0E: 'Time To Go',
+                0x0F: 'Alarm',
+                0x10: 'Relay State',
+                0x11: 'AC Out Voltage',
+                0x12: 'AC Out Current',
+                0x13: 'AC Out Power',
+                0x14: 'Input Voltage',
+                0x15: 'Output Voltage',
+                0x16: 'Off Reason'
+            };
+            return types[type] || 'Unknown (0x' + type.toString(16).toUpperCase() + ')';
+        }
+        
+        function updateDebugData() {
+            fetch('/api/debug')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('debugData');
+                    
+                    if (!data.devices || data.devices.length === 0) {
+                        container.innerHTML = '<div class="status"><p>No devices found during scan. Waiting for next scan cycle...</p></div>';
+                    } else {
+                        container.innerHTML = data.devices.map(d => {
+                            let signalClass = 'signal-good';
+                            if (d.rssi < -80) signalClass = 'signal-poor';
+                            else if (d.rssi < -60) signalClass = 'signal-medium';
+                            
+                            let recordsHtml = '';
+                            if (d.records && d.records.length > 0) {
+                                recordsHtml = '<div class="data-section"><h3>Parsed Records</h3><div class="record-list">';
+                                d.records.forEach(rec => {
+                                    recordsHtml += `
+                                        <div class="record-item">
+                                            <div class="record-type">${recordTypeName(rec.type)}</div>
+                                            <div class="record-details">
+                                                <span>Type: 0x${rec.type.toString(16).toUpperCase().padStart(2, '0')}</span>
+                                                <span>Length: ${rec.length} bytes</span>
+                                                <span>Data: ${rec.data.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                                recordsHtml += '</div></div>';
+                            }
+                            
+                            return `
+                                <div class="device-card">
+                                    <div class="device-header">
+                                        <div>
+                                            <div class="device-name">${d.name}</div>
+                                            <div class="device-type">${d.typeName}</div>
+                                            <div class="device-address">${d.address}</div>
+                                        </div>
+                                        <div class="signal">
+                                            <div class="signal-icon ${signalClass}"></div>
+                                            <span style="font-size: 12px;">${d.rssi} dBm</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="data-section">
+                                        <h3>Device Information</h3>
+                                        <div class="data-row">
+                                            <span class="data-label">Device Type:</span>
+                                            <span class="data-value">${d.typeName} (ID: ${d.type})</span>
+                                        </div>
+                                        <div class="data-row">
+                                            <span class="data-label">Model ID:</span>
+                                            <span class="data-value">${d.modelId || 'N/A'}</span>
+                                        </div>
+                                        <div class="data-row">
+                                            <span class="data-label">Encrypted:</span>
+                                            <span class="data-value">${d.encrypted ? 'Yes' : 'No'}</span>
+                                        </div>
+                                        <div class="data-row">
+                                            <span class="data-label">Data Valid:</span>
+                                            <span class="data-value">${d.dataValid ? 'Yes' : 'No'}</span>
+                                        </div>
+                                        <div class="data-row">
+                                            <span class="data-label">Last Update:</span>
+                                            <span class="data-value">${d.lastUpdate} ms ago</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="data-section">
+                                        <h3>Raw Manufacturer Data</h3>
+                                        <div class="data-row">
+                                            <span class="data-label">Length:</span>
+                                            <span class="data-value">${d.rawDataLength} bytes</span>
+                                        </div>
+                                        <div class="data-row">
+                                            <span class="data-label">Manufacturer ID:</span>
+                                            <span class="data-value">0x${d.manufacturerId || 'N/A'}</span>
+                                        </div>
+                                        <div class="hex-data">
+                                            <div class="hex-line">${bytesToHex(d.rawData || [])}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    ${recordsHtml}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                    
+                    document.getElementById('lastUpdate').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+                })
+                .catch(err => {
+                    console.error('Error fetching debug data:', err);
+                    document.getElementById('debugData').innerHTML = '<div class="status"><p>Error loading debug data</p></div>';
+                });
+        }
+        
+        // Initial load
+        updateDebugData();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(updateDebugData, 5000);
+    </script>
+</body>
+</html>

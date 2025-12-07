@@ -61,6 +61,23 @@ void VictronBLE::scan(int duration) {
                     devData.type = identifyDeviceType(devData.name);
                     devData.lastUpdate = millis();
                     
+                    // Store raw manufacturer data for debug purposes
+                    devData.manufacturerId = mfgId;
+                    devData.rawDataLength = mfgData.length() > sizeof(devData.rawManufacturerData) 
+                                           ? sizeof(devData.rawManufacturerData) 
+                                           : mfgData.length();
+                    memcpy(devData.rawManufacturerData, mfgData.data(), devData.rawDataLength);
+                    
+                    // Extract model ID if available
+                    if (mfgData.length() >= 5) {
+                        devData.modelId = (uint8_t)mfgData[4] << 8 | (uint8_t)mfgData[3];
+                    }
+                    
+                    // Check if encrypted
+                    if (mfgData.length() >= 6) {
+                        devData.encrypted = (mfgData[5] != 0x00);
+                    }
+                    
                     // Parse manufacturer data with encryption key if available
                     if (mfgData.length() > 2) {
                         String encKey = getEncryptionKey(devData.address);
@@ -113,6 +130,9 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     
     if (length < 6) return false;
     
+    // Clear previous parsed records
+    device.parsedRecords.clear();
+    
     // Check if data is encrypted (byte 5 != 0x00)
     bool isEncrypted = (data[5] != 0x00);
     
@@ -151,6 +171,15 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         if (pos + 2 + recordLen > length) break;
         
         const uint8_t* recordData = &dataToProcess[pos + 2];
+        
+        // Store parsed record for debug purposes
+        VictronRecord rec;
+        rec.type = recordType;
+        rec.length = recordLen;
+        if (recordLen <= sizeof(rec.data)) {
+            memcpy(rec.data, recordData, recordLen);
+            device.parsedRecords.push_back(rec);
+        }
         
         switch (recordType) {
             case BATTERY_VOLTAGE:
