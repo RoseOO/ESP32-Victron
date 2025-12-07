@@ -342,18 +342,14 @@ void WebConfigServer::handleUpdateDevice(AsyncWebServerRequest *request) {
 void WebConfigServer::handleDeleteDevice(AsyncWebServerRequest *request) {
     String address = "";
     
-    // Try multiple methods to get the address parameter
-    // Method 1: POST body parameter (standard approach)
+    // Try to get the address parameter
+    // Method 1: POST body parameter (primary approach for form-urlencoded data)
     if (request->hasParam("address", true)) {
         address = request->getParam("address", true)->value();
     } 
-    // Method 2: Check all parameters (POST or GET)
+    // Method 2: Check all parameters (POST or GET) as fallback
     else if (request->hasParam("address")) {
         address = request->getParam("address")->value();
-    }
-    // Method 3: URL query parameter (fallback)
-    else if (request->hasParam("address", false)) {
-        address = request->getParam("address", false)->value();
     }
     
     if (!address.isEmpty()) {
