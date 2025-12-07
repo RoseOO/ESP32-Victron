@@ -425,7 +425,7 @@
             <form id="lcdForm">
                 <div class="form-group">
                     <label>Font Size</label>
-                    <select id="lcdFontSize">
+                    <select id="lcdFontSizeInput">
                         <option value="1">Small (1x)</option>
                         <option value="2">Medium (2x)</option>
                         <option value="3">Large (3x)</option>
@@ -434,12 +434,12 @@
                 </div>
                 <div class="form-group">
                     <label>Page Scroll Rate (seconds)</label>
-                    <input type="number" id="lcdScrollRate" placeholder="5" value="5" min="1" max="60">
+                    <input type="number" id="lcdScrollRateInput" placeholder="5" value="5" min="1" max="60">
                     <small>Time to display each device before scrolling to next</small>
                 </div>
                 <div class="form-group">
                     <label>Display Orientation</label>
-                    <select id="lcdOrientation">
+                    <select id="lcdOrientationInput">
                         <option value="landscape">Landscape (default)</option>
                         <option value="portrait">Portrait</option>
                     </select>
@@ -756,9 +756,9 @@
             fetch('/api/lcd')
                 .then(r => r.json())
                 .then(lcd => {
-                    document.getElementById('lcdFontSize').value = lcd.fontSize || 1;
-                    document.getElementById('lcdScrollRate').value = lcd.scrollRate || 5;
-                    document.getElementById('lcdOrientation').value = lcd.orientation || 'landscape';
+                    document.getElementById('lcdFontSizeInput').value = lcd.fontSize || 1;
+                    document.getElementById('lcdScrollRateInput').value = lcd.scrollRate || 5;
+                    document.getElementById('lcdOrientationInput').value = lcd.orientation || 'landscape';
                     document.getElementById('lcdModal').classList.add('active');
                 });
         }
@@ -797,9 +797,9 @@
             e.preventDefault();
             
             const formData = new URLSearchParams();
-            formData.append('fontSize', document.getElementById('lcdFontSize').value);
-            formData.append('scrollRate', document.getElementById('lcdScrollRate').value);
-            formData.append('orientation', document.getElementById('lcdOrientation').value);
+            formData.append('fontSize', document.getElementById('lcdFontSizeInput').value);
+            formData.append('scrollRate', document.getElementById('lcdScrollRateInput').value);
+            formData.append('orientation', document.getElementById('lcdOrientationInput').value);
             
             fetch('/api/lcd', {
                 method: 'POST',
