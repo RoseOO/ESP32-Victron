@@ -308,10 +308,8 @@ void WebConfigServer::handleUpdateDevice(AsyncWebServerRequest *request) {
                        request->getParam("enabled", true)->value() == "true" : true;
         
         // Use oldAddress if provided (for MAC address updates), otherwise use new address
-        String lookupAddress = newAddress;
-        if (request->hasParam("oldAddress", true)) {
-            lookupAddress = request->getParam("oldAddress", true)->value();
-        }
+        String lookupAddress = request->hasParam("oldAddress", true) ? 
+                              request->getParam("oldAddress", true)->value() : newAddress;
         
         DeviceConfig config(name, newAddress, key, enabled);
         updateDeviceConfig(lookupAddress, config);

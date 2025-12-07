@@ -493,7 +493,7 @@
                     }
                 })
                 .catch(err => {
-                    alert('Error: ' + err.message);
+                    alert('Failed to delete device: ' + err.message);
                 });
             }
         }
@@ -530,7 +530,7 @@
                 }
             })
             .catch(err => {
-                alert('Error: ' + err.message);
+                alert('Failed to save device: ' + err.message);
             });
         };
 
