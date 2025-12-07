@@ -58,6 +58,8 @@ private:
     void handleSetWiFiConfig(AsyncWebServerRequest *request);
     void handleGetMQTTConfig(AsyncWebServerRequest *request);
     void handleSetMQTTConfig(AsyncWebServerRequest *request);
+    void handleGetBuzzerConfig(AsyncWebServerRequest *request);
+    void handleSetBuzzerConfig(AsyncWebServerRequest *request);
     void handleRestart(AsyncWebServerRequest *request);
     
     // Pointer to VictronBLE instance for live data
