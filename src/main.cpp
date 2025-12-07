@@ -1,6 +1,7 @@
 #include <M5StickCPlus2.h>
 #include <Arduino.h>
 #include <vector>
+#include "NoDebug.h"
 
 // Add the project headers that define the classes/types used below.
 // Adjust filenames if your headers use different names/paths.

@@ -175,15 +175,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 Victron BLE Configuration</h1>
+            <h1>Victron BLE Configuration</h1>
             <p>Configure your Victron devices and encryption keys</p>
         </div>
         
         <div class="content">
             <div class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="margin-bottom: 0;">📱 Configured Devices</h2>
-                    <a href="/monitor" style="padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">📊 Live Monitor</a>
+                    <h2 style="margin-bottom: 0;">Configured Devices</h2>
+                    <a href="/monitor" style="padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Live Monitor</a>
                 </div>
                 <div class="info-box">
                     <strong>Note:</strong> Add your Victron devices with their BLE MAC addresses. 
@@ -216,14 +216,14 @@
             </div>
             
             <div class="section">
-                <h2>🏠 Home Assistant / MQTT</h2>
+                <h2>Home Assistant / MQTT</h2>
                 <div id="mqttStatus" class="info-box">
                     <strong>Status:</strong> <span id="mqttEnabled">Loading...</span><br>
                     <strong>Broker:</strong> <span id="mqttBroker">Loading...</span><br>
                     <strong>Connection:</strong> <span id="mqttConnected">Loading...</span>
                 </div>
                 <button class="btn-primary" onclick="openMQTTModal()">
-                    ⚙️ Configure MQTT
+                    Configure MQTT
                 </button>
             </div>
         </div>
@@ -350,7 +350,7 @@
                     <input type="number" id="mqttInterval" placeholder="30" value="30" min="5" max="300">
                 </div>
                 <div class="info-box">
-                    <strong>ℹ️ Info:</strong> MQTT data will be published every interval. Home Assistant auto-discovery will create sensors automatically.
+                    <strong>ℹInfo:</strong> MQTT data will be published every interval. Home Assistant auto-discovery will create sensors automatically.
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-secondary" onclick="closeMQTTModal()">Cancel</button>
