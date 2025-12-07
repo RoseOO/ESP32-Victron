@@ -260,6 +260,17 @@ void WebConfigServer::handleGetLiveData(AsyncWebServerRequest *request) {
         json += "\"power\":" + String(device->power, 1) + ",";
         json += "\"batterySOC\":" + String(device->batterySOC, 1) + ",";
         json += "\"temperature\":" + String(device->temperature, 1) + ",";
+        json += "\"consumedAh\":" + String(device->consumedAh, 1) + ",";
+        json += "\"timeToGo\":" + String(device->timeToGo) + ",";
+        json += "\"auxVoltage\":" + String(device->auxVoltage, 2) + ",";
+        json += "\"midVoltage\":" + String(device->midVoltage, 2) + ",";
+        json += "\"auxMode\":" + String(device->auxMode) + ",";
+        json += "\"yieldToday\":" + String(device->yieldToday, 2) + ",";
+        json += "\"pvPower\":" + String(device->pvPower, 0) + ",";
+        json += "\"loadCurrent\":" + String(device->loadCurrent, 2) + ",";
+        json += "\"deviceState\":" + String(device->deviceState) + ",";
+        json += "\"chargerError\":" + String(device->chargerError) + ",";
+        json += "\"alarmState\":" + String(device->alarmState) + ",";
         json += "\"acOutVoltage\":" + String(device->acOutVoltage, 2) + ",";
         json += "\"acOutCurrent\":" + String(device->acOutCurrent, 2) + ",";
         json += "\"acOutPower\":" + String(device->acOutPower, 1) + ",";

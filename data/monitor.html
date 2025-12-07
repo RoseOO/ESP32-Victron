@@ -102,6 +102,9 @@
             font-weight: bold;
             color: #333;
         }
+        .error-text {
+            color: #e74c3c;
+        }
         .status {
             text-align: center;
             padding: 40px;
@@ -177,6 +180,53 @@
                                 dataRows += `<div class="data-row"><span class="data-label">Temperature:</span><span class="data-value">${d.temperature.toFixed(1)} °C</span></div>`;
                             }
                             
+                            // SmartShunt specific fields
+                            if (d.consumedAh && d.consumedAh > 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">Consumed Ah:</span><span class="data-value">${d.consumedAh.toFixed(1)} Ah</span></div>`;
+                            }
+                            
+                            if (d.timeToGo && d.timeToGo > 0 && d.timeToGo < 65535) {
+                                const hours = Math.floor(d.timeToGo / 60);
+                                const minutes = d.timeToGo % 60;
+                                dataRows += `<div class="data-row"><span class="data-label">Time to Go:</span><span class="data-value">${hours}h ${minutes}m</span></div>`;
+                            }
+                            
+                            if (d.auxMode !== undefined && d.auxMode !== 3) {
+                                if (d.auxMode === 0 && d.auxVoltage) {
+                                    dataRows += `<div class="data-row"><span class="data-label">Aux Voltage:</span><span class="data-value">${d.auxVoltage.toFixed(2)} V</span></div>`;
+                                } else if (d.auxMode === 1 && d.midVoltage) {
+                                    dataRows += `<div class="data-row"><span class="data-label">Mid Voltage:</span><span class="data-value">${d.midVoltage.toFixed(2)} V</span></div>`;
+                                }
+                            }
+                            
+                            // Solar Controller specific fields
+                            if (d.yieldToday !== undefined && d.yieldToday >= 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">Yield Today:</span><span class="data-value">${d.yieldToday.toFixed(2)} kWh</span></div>`;
+                            }
+                            
+                            if (d.pvPower !== undefined && d.pvPower > 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">PV Power:</span><span class="data-value">${d.pvPower.toFixed(0)} W</span></div>`;
+                            }
+                            
+                            if (d.loadCurrent !== undefined && d.loadCurrent > 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">Load Current:</span><span class="data-value">${d.loadCurrent.toFixed(2)} A</span></div>`;
+                            }
+                            
+                            if (d.deviceState !== undefined && d.deviceState > 0) {
+                                const states = {0: 'Off', 1: 'Low Power', 2: 'Fault', 3: 'Bulk', 4: 'Absorption', 5: 'Float', 6: 'Storage', 7: 'Equalize'};
+                                dataRows += `<div class="data-row"><span class="data-label">State:</span><span class="data-value">${states[d.deviceState] || 'Unknown'}</span></div>`;
+                            }
+                            
+                            if (d.chargerError !== undefined && d.chargerError > 0) {
+                                const errors = {1: 'Battery Hot', 2: 'High Voltage', 3: 'Remote A', 4: 'Remote B', 5: 'Remote C'};
+                                dataRows += `<div class="data-row"><span class="data-label">Error:</span><span class="data-value error-text">${errors[d.chargerError] || 'Error ' + d.chargerError}</span></div>`;
+                            }
+                            
+                            if (d.alarmState !== undefined && d.alarmState > 0) {
+                                dataRows += `<div class="data-row"><span class="data-label">Alarm:</span><span class="data-value error-text">Active (0x${d.alarmState.toString(16).toUpperCase()})</span></div>`;
+                            }
+                            
+                            // Inverter specific fields
                             if (d.hasAcOut) {
                                 dataRows += `<div class="data-row"><span class="data-label">AC Output:</span><span class="data-value">${d.acOutVoltage.toFixed(1)} V</span></div>`;
                                 if (d.acOutPower > 0) {
@@ -184,6 +234,7 @@
                                 }
                             }
                             
+                            // DC-DC Converter specific fields
                             if (d.hasInputVoltage) {
                                 dataRows += `<div class="data-row"><span class="data-label">Input:</span><span class="data-value">${d.inputVoltage.toFixed(2)} V</span></div>`;
                             }

@@ -74,6 +74,17 @@ struct VictronDeviceData {
     float consumedAh;           // Ah
     int timeToGo;               // minutes
     
+    // SmartShunt specific  
+    float auxVoltage;           // V - auxiliary input
+    float midVoltage;           // V - midpoint voltage
+    int auxMode;                // 0=aux voltage, 1=midpoint, 2=temperature, 3=none
+    
+    // Solar Controller specific
+    float yieldToday;           // kWh - today's yield
+    float pvPower;              // W - PV panel power
+    float loadCurrent;          // A - load current
+    int chargerError;           // charger error code
+    
     // Inverter specific
     float acOutVoltage;         // V
     float acOutCurrent;         // A
@@ -120,6 +131,13 @@ struct VictronDeviceData {
         temperature(-273.15),  // Below absolute zero = unavailable
         consumedAh(0),
         timeToGo(0),
+        auxVoltage(0),
+        midVoltage(0),
+        auxMode(3),  // 3 = none
+        yieldToday(0),
+        pvPower(0),
+        loadCurrent(0),
+        chargerError(0),
         acOutVoltage(0),
         acOutCurrent(0),
         acOutPower(0),
@@ -156,6 +174,19 @@ private:
     bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey);
     bool decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key);
     float decodeValue(const uint8_t* data, int len, float scale);
+    
+    // Device-specific parsing functions for the 16-byte fixed structure
+    void parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device);
+    void parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device);
+    void parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device);
+    void parseTLVRecords(const uint8_t* data, size_t length, size_t startPos, VictronDeviceData& device);
+    
+    // Helper functions for multi-byte value extraction
+    int16_t extractSigned16(const uint8_t* data, int byteIndex);
+    uint16_t extractUnsigned16(const uint8_t* data, int byteIndex);
+    int32_t extractSigned22(const uint8_t* data, int startByte);
+    uint32_t extractUnsigned20(const uint8_t* data, int startByte);
+    uint16_t extractUnsigned10(const uint8_t* data, int startByte);
     
     // Helper function to normalize MAC addresses for comparison
     // Removes colons and converts to lowercase
