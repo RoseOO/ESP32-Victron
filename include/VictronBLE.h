@@ -101,8 +101,8 @@ struct VictronDeviceData {
     bool hasInputVoltage;
     bool hasOutputVoltage;
     
-    // Raw debug data
-    uint8_t rawManufacturerData[256];
+    // Raw debug data (BLE manufacturer data is typically 20-30 bytes for Victron devices)
+    uint8_t rawManufacturerData[64];  // Sufficient for typical BLE advertisement payloads
     size_t rawDataLength;
     uint16_t manufacturerId;
     uint16_t modelId;

@@ -179,6 +179,10 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         if (recordLen <= sizeof(rec.data)) {
             memcpy(rec.data, recordData, recordLen);
             device.parsedRecords.push_back(rec);
+        } else {
+            // Log when records are too large to store
+            Serial.printf("Warning: Record type 0x%02X length %d exceeds buffer size, skipping\n", 
+                         recordType, recordLen);
         }
         
         switch (recordType) {

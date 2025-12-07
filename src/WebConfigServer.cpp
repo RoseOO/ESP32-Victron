@@ -438,7 +438,7 @@ void WebConfigServer::handleGetDebugData(AsyncWebServerRequest *request) {
         json += "\"rssi\":" + String(device->rssi) + ",";
         json += "\"dataValid\":" + String(device->dataValid ? "true" : "false") + ",";
         json += "\"encrypted\":" + String(device->encrypted ? "true" : "false") + ",";
-        json += "\"manufacturerId\":\"" + String(device->manufacturerId, HEX) + "\",";
+        json += "\"manufacturerId\":\"0x" + String(device->manufacturerId, HEX) + "\",";
         json += "\"modelId\":\"0x" + String(device->modelId, HEX) + "\",";
         json += "\"rawDataLength\":" + String(device->rawDataLength) + ",";
         json += "\"lastUpdate\":" + String(millis() - device->lastUpdate) + ",";
