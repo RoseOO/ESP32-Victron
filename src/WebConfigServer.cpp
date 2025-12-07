@@ -13,6 +13,8 @@ WebConfigServer::~WebConfigServer() {
 
 void WebConfigServer::setVictronBLE(VictronBLE* vble) {
     victronBLE = vble;
+    // Sync any loaded encryption keys to the VictronBLE instance
+    syncEncryptionKeys();
 }
 
 void WebConfigServer::setMQTTPublisher(MQTTPublisher* mqtt) {
@@ -438,6 +440,7 @@ void WebConfigServer::handleGetDebugData(AsyncWebServerRequest *request) {
         json += "\"rssi\":" + String(device->rssi) + ",";
         json += "\"dataValid\":" + String(device->dataValid ? "true" : "false") + ",";
         json += "\"encrypted\":" + String(device->encrypted ? "true" : "false") + ",";
+        json += "\"errorMessage\":\"" + device->errorMessage + "\",";
         String mfgIdHex = String(device->manufacturerId, HEX);
         mfgIdHex.toUpperCase();
         json += "\"manufacturerId\":\"0x" + mfgIdHex + "\",";
@@ -626,6 +629,9 @@ void WebConfigServer::loadDeviceConfigs() {
     
     preferences.end();
     Serial.printf("Loaded %d device configs\n", deviceConfigs.size());
+    
+    // Sync encryption keys to VictronBLE instance if available
+    syncEncryptionKeys();
 }
 
 // Device configuration access methods
@@ -649,6 +655,10 @@ void WebConfigServer::addDeviceConfig(const DeviceConfig& config) {
             // Update existing
             deviceConfigs[i] = config;
             saveDeviceConfigs();
+            // Sync encryption key to VictronBLE
+            if (victronBLE && !config.encryptionKey.isEmpty()) {
+                victronBLE->setEncryptionKey(config.address, config.encryptionKey);
+            }
             return;
         }
     }
@@ -656,6 +666,10 @@ void WebConfigServer::addDeviceConfig(const DeviceConfig& config) {
     // Add new
     deviceConfigs.push_back(config);
     saveDeviceConfigs();
+    // Sync encryption key to VictronBLE
+    if (victronBLE && !config.encryptionKey.isEmpty()) {
+        victronBLE->setEncryptionKey(config.address, config.encryptionKey);
+    }
 }
 
 void WebConfigServer::updateDeviceConfig(const String& address, const DeviceConfig& config) {
@@ -663,6 +677,10 @@ void WebConfigServer::updateDeviceConfig(const String& address, const DeviceConf
         if (deviceConfigs[i].address.equalsIgnoreCase(address)) {
             deviceConfigs[i] = config;
             saveDeviceConfigs();
+            // Sync encryption key to VictronBLE
+            if (victronBLE && !config.encryptionKey.isEmpty()) {
+                victronBLE->setEncryptionKey(config.address, config.encryptionKey);
+            }
             return;
         }
     }
@@ -673,7 +691,22 @@ void WebConfigServer::removeDeviceConfig(const String& address) {
         if (deviceConfigs[i].address.equalsIgnoreCase(address)) {
             deviceConfigs.erase(deviceConfigs.begin() + i);
             saveDeviceConfigs();
+            // Note: We don't remove the encryption key from VictronBLE as it's harmless to keep it
             return;
+        }
+    }
+}
+
+void WebConfigServer::syncEncryptionKeys() {
+    if (!victronBLE) {
+        return;  // VictronBLE not set yet, will sync when it's set
+    }
+    
+    // Sync all encryption keys from device configs to VictronBLE
+    for (const auto& config : deviceConfigs) {
+        if (!config.encryptionKey.isEmpty()) {
+            victronBLE->setEncryptionKey(config.address, config.encryptionKey);
+            Serial.printf("Synced encryption key for device %s\n", config.address.c_str());
         }
     }
 }

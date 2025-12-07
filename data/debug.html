@@ -207,6 +207,31 @@
         .btn-refresh:hover {
             background: #5568d3;
         }
+        .error-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            color: #856404;
+        }
+        .error-box strong {
+            color: #d39e00;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .error-box p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .error-box ol {
+            margin: 10px 0 0 20px;
+            font-size: 13px;
+        }
+        .error-box li {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -349,6 +374,28 @@
                                             <span class="data-value">${d.lastUpdate} ms ago</span>
                                         </div>
                                     </div>
+                                    
+                                    ${d.encrypted && d.errorMessage ? `
+                                        <div class="error-box">
+                                            <strong>⚠️ Device is Encrypted</strong>
+                                            <p>${d.errorMessage}</p>
+                                            <p><strong>Option 1: Add encryption key (Advanced):</strong></p>
+                                            <ol>
+                                                <li>Go to <a href="/" style="color: #667eea; text-decoration: underline;">Configuration</a> page</li>
+                                                <li>Add or edit this device and enter the encryption key</li>
+                                                <li>Refresh this page to see parsed data</li>
+                                            </ol>
+                                            <p><strong>Option 2: Enable Instant Readout mode (Easier):</strong></p>
+                                            <ol>
+                                                <li>Open the VictronConnect app on your phone</li>
+                                                <li>Connect to your ${d.typeName}</li>
+                                                <li>Go to Settings</li>
+                                                <li>Find "Instant Readout via Bluetooth" option</li>
+                                                <li>Enable it (this disables encryption)</li>
+                                                <li>Refresh this page to see parsed data</li>
+                                            </ol>
+                                        </div>
+                                    ` : ''}
                                     
                                     <div class="data-section">
                                         <h3>Raw Manufacturer Data</h3>
