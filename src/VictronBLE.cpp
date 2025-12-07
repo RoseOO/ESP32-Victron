@@ -794,6 +794,8 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
 // This preserves the last good values when new parsing fails or returns invalid data
 void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDeviceData& existingData) {
     // Always update these fields regardless of parsing success
+    existingData.name = newData.name;
+    existingData.type = newData.type;
     existingData.rssi = newData.rssi;
     existingData.lastUpdate = newData.lastUpdate;
     existingData.rawDataLength = newData.rawDataLength;
@@ -858,14 +860,13 @@ void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDevice
             existingData.hasOutputVoltage = true;
         }
         
-        // Update SmartShunt specific fields
+        // Update all device-specific fields when data is valid
+        // These fields are always updated together as a complete set
         existingData.consumedAh = newData.consumedAh;
         existingData.timeToGo = newData.timeToGo;
         existingData.auxVoltage = newData.auxVoltage;
         existingData.midVoltage = newData.midVoltage;
         existingData.auxMode = newData.auxMode;
-        
-        // Update Solar Controller specific fields
         existingData.yieldToday = newData.yieldToday;
         existingData.pvPower = newData.pvPower;
         existingData.loadCurrent = newData.loadCurrent;
