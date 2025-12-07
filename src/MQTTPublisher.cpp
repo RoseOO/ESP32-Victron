@@ -4,8 +4,7 @@ MQTTPublisher::MQTTPublisher() :
     mqttClient(wifiClient),
     victronBLE(nullptr),
     lastPublishTime(0),
-    lastReconnectAttempt(0),
-    discoveryPublished(false) {
+    lastReconnectAttempt(0) {
 }
 
 void MQTTPublisher::begin(VictronBLE* vble) {
@@ -66,7 +65,7 @@ void MQTTPublisher::reconnect() {
     
     if (connected) {
         Serial.println(" connected!");
-        discoveryPublished = false;  // Re-publish discovery on reconnect
+        discoveryPublished.clear();  // Re-publish discovery for all devices on reconnect
     } else {
         Serial.print(" failed, rc=");
         Serial.println(mqttClient.state());
@@ -83,16 +82,15 @@ void MQTTPublisher::publishAll() {
     for (auto& pair : devices) {
         VictronDeviceData* device = &pair.second;
         
-        // Publish Home Assistant discovery if enabled and not yet published
-        if (config.homeAssistant && !discoveryPublished) {
+        // Publish Home Assistant discovery if enabled and not yet published for this device
+        if (config.homeAssistant && discoveryPublished.find(device->address) == discoveryPublished.end()) {
             publishDiscovery(device);
+            discoveryPublished[device->address] = true;
         }
         
         // Publish device data
         publishDeviceData(device);
     }
-    
-    discoveryPublished = true;
 }
 
 void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
@@ -120,15 +118,15 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
         {"Battery SOC", "%", "battery", "measurement", device->hasSOC},
         {"Temperature", "°C", "temperature", "measurement", device->hasTemperature},
         {"Consumed Ah", "Ah", "energy", "total_increasing", device->consumedAh > 0},
-        {"Time to Go", "min", "", "measurement", device->timeToGo > 0 && device->timeToGo < 65535},
+        {"Time to Go", "min", "duration", "measurement", device->timeToGo > 0 && device->timeToGo < 65535},
         {"Aux Voltage", "V", "voltage", "measurement", device->auxMode == 0 && device->auxVoltage > 0},
         {"Mid Voltage", "V", "voltage", "measurement", device->auxMode == 1 && device->midVoltage > 0},
         {"Yield Today", "kWh", "energy", "total_increasing", device->yieldToday > 0},
         {"PV Power", "W", "power", "measurement", device->pvPower > 0},
         {"Load Current", "A", "current", "measurement", device->loadCurrent > 0},
-        {"Device State", "", "", "measurement", device->deviceState >= 0},
-        {"Charger Error", "", "", "measurement", device->chargerError > 0},
-        {"Alarm State", "", "", "measurement", device->alarmState > 0},
+        {"Device State", "", "", "", device->deviceState >= 0},
+        {"Charger Error", "", "", "", device->chargerError > 0},
+        {"Alarm State", "", "", "", device->alarmState > 0},
         {"AC Output Voltage", "V", "voltage", "measurement", device->hasAcOut},
         {"AC Output Power", "W", "power", "measurement", device->hasAcOut},
         {"Input Voltage", "V", "voltage", "measurement", device->hasInputVoltage},
@@ -143,14 +141,30 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
         String discoveryTopic = "homeassistant/sensor/" + deviceId + "_" + sensorId + "/config";
         String stateTopic = config.baseTopic + "/" + deviceId + "/" + sensorId;
         
+        // Build JSON payload with proper formatting
         String payload = "{";
         payload += "\"name\":\"" + deviceName + " " + String(sensor.name) + "\",";
+        payload += "\"object_id\":\"" + deviceId + "_" + sensorId + "\",";
         payload += "\"unique_id\":\"" + deviceId + "_" + sensorId + "\",";
-        payload += "\"state_topic\":\"" + stateTopic + "\",";
-        payload += "\"unit_of_measurement\":\"" + String(sensor.unit) + "\",";
-        payload += "\"device_class\":\"" + String(sensor.deviceClass) + "\",";
-        payload += "\"state_class\":\"" + String(sensor.stateClass) + "\",";
-        payload += "\"device\":{";
+        payload += "\"state_topic\":\"" + stateTopic + "\"";
+        
+        // Only add unit_of_measurement if not empty
+        if (strlen(sensor.unit) > 0) {
+            payload += ",\"unit_of_measurement\":\"" + String(sensor.unit) + "\"";
+        }
+        
+        // Only add device_class if not empty
+        if (strlen(sensor.deviceClass) > 0) {
+            payload += ",\"device_class\":\"" + String(sensor.deviceClass) + "\"";
+        }
+        
+        // Only add state_class if not empty
+        if (strlen(sensor.stateClass) > 0) {
+            payload += ",\"state_class\":\"" + String(sensor.stateClass) + "\"";
+        }
+        
+        // Add device information
+        payload += ",\"device\":{";
         payload += "\"identifiers\":[\"" + deviceId + "\"],";
         payload += "\"name\":\"" + deviceName + "\",";
         payload += "\"manufacturer\":\"Victron Energy\",";
@@ -177,9 +191,11 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
                 break;
         }
         
-        payload += "\"}}";
+        payload += "\"}";
+        payload += "}";
         
         mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
+        Serial.printf("Published HA discovery: %s\n", discoveryTopic.c_str());
         // Note: Discovery messages are sent once on connect, not frequently
         // MQTT client handles queueing internally, no delay needed
     }
@@ -343,7 +359,7 @@ void MQTTPublisher::setConfig(const MQTTConfig& cfg) {
     if (config.enabled && !config.broker.isEmpty()) {
         disconnect();
         mqttClient.setServer(config.broker.c_str(), config.port);
-        discoveryPublished = false;
+        discoveryPublished.clear();  // Re-publish discovery for all devices
     }
 }
 
