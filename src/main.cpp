@@ -833,7 +833,7 @@ void drawDisplay() {
         M5.Lcd.fillRect(indicatorX - 5, indicatorY - 10, 15, 25, BLACK);
         
         M5.Lcd.setTextSize(1);
-        // Show position: e.g., "1/3" means showing items 1-3 of 9 total
+        // Show current scroll position: first visible item / total items
         M5.Lcd.setTextColor(YELLOW, BLACK);
         M5.Lcd.setCursor(indicatorX - 10, indicatorY);
         M5.Lcd.printf("%d/%d", verticalScrollOffset + 1, dataItemCount);
@@ -1037,7 +1037,7 @@ void loop() {
     // Reset long press flag when button is released
     if (M5.BtnA.wasReleased()) {
         longPressHandled = false;
-        waitingForDoublePress = false;  // Reset double-press waiting state on release
+        // Don't reset waitingForDoublePress here - let the timeout handle it
     }
     
     // Button A: Handle single press, double press for large display mode toggle
