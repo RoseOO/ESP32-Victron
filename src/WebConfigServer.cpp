@@ -137,14 +137,20 @@ void WebConfigServer::startServer() {
     
     server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleAddDevice(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/devices/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleUpdateDevice(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/devices/delete", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleDeleteDevice(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/wifi", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -153,6 +159,8 @@ void WebConfigServer::startServer() {
     
     server->on("/api/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetWiFiConfig(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/mqtt", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -161,6 +169,8 @@ void WebConfigServer::startServer() {
     
     server->on("/api/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetMQTTConfig(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/buzzer", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -169,10 +179,14 @@ void WebConfigServer::startServer() {
     
     server->on("/api/buzzer", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetBuzzerConfig(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
+    }, NULL, [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler - required for POST body parameters to be parsed
     });
     
     server->begin();
