@@ -245,6 +245,7 @@
                 <h2>LCD Display Settings</h2>
                 <div id="lcdStatus" class="info-box">
                     <strong>Font Size:</strong> <span id="lcdFontSize">Loading...</span><br>
+                    <strong>Auto-Scroll:</strong> <span id="lcdAutoScroll">Loading...</span><br>
                     <strong>Scroll Rate:</strong> <span id="lcdScrollRate">Loading...</span><br>
                     <strong>Orientation:</strong> <span id="lcdOrientation">Loading...</span>
                 </div>
@@ -736,11 +737,13 @@
                 .then(lcd => {
                     const fontSizeText = ['Small (1x)', 'Medium (2x)', 'Large (3x)'];
                     document.getElementById('lcdFontSize').textContent = fontSizeText[(lcd.fontSize || 1) - 1] || 'Small (1x)';
+                    document.getElementById('lcdAutoScroll').textContent = (lcd.autoScroll !== false) ? 'Enabled' : 'Disabled';
                     document.getElementById('lcdScrollRate').textContent = (lcd.scrollRate || 5) + ' seconds';
                     document.getElementById('lcdOrientation').textContent = lcd.orientation === 'portrait' ? 'Portrait' : 'Landscape';
                 })
                 .catch(err => {
                     document.getElementById('lcdFontSize').textContent = 'Error loading';
+                    document.getElementById('lcdAutoScroll').textContent = 'Error loading';
                     document.getElementById('lcdScrollRate').textContent = 'Error loading';
                     document.getElementById('lcdOrientation').textContent = 'Error loading';
                 });
