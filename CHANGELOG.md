@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data Retention Feature**: Retain last good decoded data when parsing fails
+  - Added `retainLastData` preference (enabled by default) to preserve last valid readings
+  - Implemented intelligent data merging in `VictronBLE::mergeDeviceData()`
+  - Only updates fields that were successfully parsed in new scan
+  - Always updates RSSI, lastUpdate, and raw BLE data
+  - Prevents display from going blank when temporary decoding issues occur
+  - Configurable via web interface toggle in Live Monitor page
+  - Stored in preferences namespace `victron-data` for persistence across reboots
+  - Added API endpoints `/api/data-retention` (GET/POST) for configuration
 - **Full AES-128-CTR Decryption**: Complete implementation of encrypted device support
   - Decrypt Victron BLE advertisement data using AES-128-CTR mode
   - Uses ESP32's built-in `esp_aes` library for hardware-accelerated decryption

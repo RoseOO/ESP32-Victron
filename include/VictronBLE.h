@@ -174,6 +174,7 @@ private:
     std::map<String, VictronDeviceData> devices;
     std::map<String, String> encryptionKeys;  // MAC address -> encryption key
     NimBLEScan* pBLEScan;
+    bool retainLastData;  // Flag to retain last good data when parsing fails
     
     VictronDeviceType identifyDeviceType(const String& name);
     bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey);
@@ -198,6 +199,9 @@ private:
     // Removes colons and converts to lowercase
     String normalizeAddress(const String& address);
     
+    // Helper function to merge new device data with existing data
+    void mergeDeviceData(const VictronDeviceData& newData, VictronDeviceData& existingData);
+    
 public:
     VictronBLE();
     void begin();
@@ -209,6 +213,8 @@ public:
     VictronDeviceData* getDevice(const String& address);
     bool hasDevices();
     int getDeviceCount();
+    void setRetainLastData(bool retain);
+    bool getRetainLastData() const;
 };
 
 #endif // VICTRON_BLE_H

@@ -26,7 +26,7 @@ public:
     }
 };
 
-VictronBLE::VictronBLE() {
+VictronBLE::VictronBLE() : retainLastData(true) {
     pBLEScan = nullptr;
 }
 
@@ -86,7 +86,15 @@ void VictronBLE::scan(int duration) {
                         parseVictronAdvertisement((const uint8_t*)mfgData.data(), mfgData.length(), devData, encKey);
                     }
                     
-                    devices[devData.address] = devData;
+                    // Check if device already exists
+                    auto it = devices.find(devData.address);
+                    if (it != devices.end() && retainLastData) {
+                        // Device exists and retain mode is enabled - merge data
+                        mergeDeviceData(devData, it->second);
+                    } else {
+                        // New device or retain mode disabled - replace completely
+                        devices[devData.address] = devData;
+                    }
                     
                     Serial.printf("Device: %s (%s) RSSI: %d\n", 
                         devData.name.c_str(), 
@@ -780,4 +788,113 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
         
         pos += 2 + recordLen;
     }
+}
+
+// Merge new device data with existing data
+// This preserves the last good values when new parsing fails or returns invalid data
+void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDeviceData& existingData) {
+    // Always update these fields regardless of parsing success
+    existingData.name = newData.name;
+    existingData.type = newData.type;
+    existingData.rssi = newData.rssi;
+    existingData.lastUpdate = newData.lastUpdate;
+    existingData.manufacturerId = newData.manufacturerId;
+    existingData.modelId = newData.modelId;
+    existingData.encrypted = newData.encrypted;
+    
+    // Safely copy raw data with bounds checking
+    existingData.rawDataLength = newData.rawDataLength > sizeof(existingData.rawManufacturerData) 
+                                 ? sizeof(existingData.rawManufacturerData) 
+                                 : newData.rawDataLength;
+    memcpy(existingData.rawManufacturerData, newData.rawManufacturerData, existingData.rawDataLength);
+    
+    existingData.parsedRecords = newData.parsedRecords;
+    
+    // If new data is valid, update all the measurement fields
+    if (newData.dataValid) {
+        existingData.dataValid = true;
+        existingData.errorMessage = newData.errorMessage;
+        
+        // Update voltage if newly available
+        if (newData.hasVoltage) {
+            existingData.voltage = newData.voltage;
+            existingData.hasVoltage = true;
+        }
+        
+        // Update current if newly available
+        if (newData.hasCurrent) {
+            existingData.current = newData.current;
+            existingData.hasCurrent = true;
+        }
+        
+        // Update power if newly available
+        if (newData.hasPower) {
+            existingData.power = newData.power;
+            existingData.hasPower = true;
+        }
+        
+        // Update SOC if newly available
+        if (newData.hasSOC) {
+            existingData.batterySOC = newData.batterySOC;
+            existingData.hasSOC = true;
+        }
+        
+        // Update temperature if newly available
+        if (newData.hasTemperature) {
+            existingData.temperature = newData.temperature;
+            existingData.hasTemperature = true;
+        }
+        
+        // Update AC output if newly available
+        if (newData.hasAcOut) {
+            existingData.acOutVoltage = newData.acOutVoltage;
+            existingData.acOutCurrent = newData.acOutCurrent;
+            existingData.acOutPower = newData.acOutPower;
+            existingData.hasAcOut = true;
+        }
+        
+        // Update input voltage if newly available
+        if (newData.hasInputVoltage) {
+            existingData.inputVoltage = newData.inputVoltage;
+            existingData.hasInputVoltage = true;
+        }
+        
+        // Update output voltage if newly available
+        if (newData.hasOutputVoltage) {
+            existingData.outputVoltage = newData.outputVoltage;
+            existingData.hasOutputVoltage = true;
+        }
+        
+        // Update all device-specific fields when data is valid
+        // These fields don't have corresponding 'has' flags because they're always
+        // present in the data structure (even if zero/default). Since we're in the
+        // dataValid block, we know parsing succeeded and these values are meaningful.
+        existingData.consumedAh = newData.consumedAh;
+        existingData.timeToGo = newData.timeToGo;
+        existingData.auxVoltage = newData.auxVoltage;
+        existingData.midVoltage = newData.midVoltage;
+        existingData.auxMode = newData.auxMode;
+        existingData.yieldToday = newData.yieldToday;
+        existingData.pvPower = newData.pvPower;
+        existingData.loadCurrent = newData.loadCurrent;
+        existingData.deviceState = newData.deviceState;
+        existingData.chargerError = newData.chargerError;
+        existingData.alarmState = newData.alarmState;
+        existingData.offReason = newData.offReason;
+    } else {
+        // New data is invalid - keep existing valid data but update error message
+        if (!newData.errorMessage.isEmpty()) {
+            existingData.errorMessage = newData.errorMessage;
+        }
+        Serial.printf("Retaining last good data for %s (new data invalid)\n", existingData.address.c_str());
+    }
+}
+
+void VictronBLE::setRetainLastData(bool retain) {
+    retainLastData = retain;
+    Serial.printf("Retain last data: %s\n", retain ? "enabled" : "disabled");
+}
+
+bool VictronBLE::getRetainLastData() const {
+    return retainLastData;
 }

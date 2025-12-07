@@ -41,11 +41,17 @@ const int BUZZER_FREQUENCY = 2000;  // Buzzer frequency in Hz
 int buzzerBeepCount = 0;
 bool longPressHandled = false;  // For button long press detection
 
+// Data retention configuration
+Preferences dataPreferences;
+bool retainLastData = true;  // Default to retaining last good data
+
 // Forward declarations
 void updateDeviceList();
 void drawDisplay();
 void loadBuzzerConfig();
 void saveBuzzerConfig();
+void loadDataRetentionConfig();
+void saveDataRetentionConfig();
 void checkBatteryAlarm();
 void handleBuzzerBeep();
 
@@ -63,6 +69,20 @@ void saveBuzzerConfig() {
     buzzerPreferences.putFloat("threshold", buzzerThreshold);
     buzzerPreferences.end();
     Serial.printf("Buzzer config saved: enabled=%d, threshold=%.1f%%\n", buzzerEnabled, buzzerThreshold);
+}
+
+void loadDataRetentionConfig() {
+    dataPreferences.begin("victron-data", true);  // read-only
+    retainLastData = dataPreferences.getBool("retainLast", true);
+    dataPreferences.end();
+    Serial.printf("Data retention config loaded: retainLastData=%d\n", retainLastData);
+}
+
+void saveDataRetentionConfig() {
+    dataPreferences.begin("victron-data", false);  // read-write
+    dataPreferences.putBool("retainLast", retainLastData);
+    dataPreferences.end();
+    Serial.printf("Data retention config saved: retainLastData=%d\n", retainLastData);
 }
 
 void checkBatteryAlarm() {
@@ -128,6 +148,10 @@ void setup() {
     // Load buzzer configuration
     Serial.println("STARTUP: loading buzzer config");
     loadBuzzerConfig();
+    
+    // Load data retention configuration
+    Serial.println("STARTUP: loading data retention config");
+    loadDataRetentionConfig();
 
     // instantiate objects (no heavy init in constructors)
     Serial.println("STARTUP: new VictronBLE/WebConfigServer/MQTTPublisher");
@@ -152,6 +176,9 @@ void setup() {
     Serial.println("STARTUP: attempting victron->begin()");
     victron->begin();
     Serial.println("STARTUP: victron->begin() returned");
+    
+    // Apply data retention setting to VictronBLE
+    victron->setRetainLastData(retainLastData);
     
     // Initialize MQTT publisher with VictronBLE reference
     Serial.println("STARTUP: attempting mqttPublisher->begin()");
