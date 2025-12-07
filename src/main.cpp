@@ -27,16 +27,22 @@ unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
 unsigned long lastDeviceSwitch = 0;  // Track when device was last switched
 unsigned long lastButtonPressTime = 0;  // For debouncing
-unsigned long lastVerticalScroll = 0;  // Track when vertical scroll last occurred (TODO: implement vertical scrolling)
+unsigned long lastVerticalScroll = 0;  // Track when vertical scroll last occurred
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
 const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 const unsigned long LONG_PRESS_DURATION = 1000;  // Long press duration in ms
-const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every 3 seconds (TODO: implement)
+const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every 3 seconds
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
-int verticalScrollOffset = 0;  // Current vertical scroll position (TODO: implement actual scrolling)
+bool largeDisplayMode = false;  // Toggle for large display mode (voltage, current, SOC only)
+int verticalScrollOffset = 0;  // Current vertical scroll position (0-based index of first visible item)
+
+// Button double-press detection
+unsigned long lastButtonClickTime = 0;
+const unsigned long DOUBLE_PRESS_INTERVAL = 400;  // Max time between clicks for double-press (ms)
+bool waitingForDoublePress = false;
 
 // Buzzer alarm configuration
 Preferences buzzerPreferences;
@@ -61,10 +67,13 @@ int lcdFontSize = 1;  // Default font size (1x)
 int lcdScrollRate = 5;  // Default scroll rate in seconds
 String lcdOrientation = "landscape";  // Default orientation
 bool lcdAutoScroll = true;  // Default to auto-scrolling between devices
+int largeDisplayTimeout = 60;  // Timeout in seconds before auto-entering large display mode (0 = disabled)
+unsigned long lastUserInteraction = 0;  // Track last user button press for timeout
 
 // Forward declarations
 void updateDeviceList();
 void drawDisplay();
+void drawLargeDisplay();
 void loadBuzzerConfig();
 void saveBuzzerConfig();
 void loadDataRetentionConfig();
@@ -110,8 +119,10 @@ void loadLCDConfig() {
     lcdScrollRate = lcdPreferences.getInt("scrollRate", 5);
     lcdOrientation = lcdPreferences.getString("orientation", "landscape");
     lcdAutoScroll = lcdPreferences.getBool("autoScroll", true);
+    largeDisplayTimeout = lcdPreferences.getInt("largeTimeout", 60);
     lcdPreferences.end();
-    Serial.printf("LCD config loaded: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll);
+    Serial.printf("LCD config loaded: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d, largeTimeout=%d\n", 
+                  lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll, largeDisplayTimeout);
 }
 
 void saveLCDConfig() {
@@ -120,8 +131,10 @@ void saveLCDConfig() {
     lcdPreferences.putInt("scrollRate", lcdScrollRate);
     lcdPreferences.putString("orientation", lcdOrientation);
     lcdPreferences.putBool("autoScroll", lcdAutoScroll);
+    lcdPreferences.putInt("largeTimeout", largeDisplayTimeout);
     lcdPreferences.end();
-    Serial.printf("LCD config saved: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll);
+    Serial.printf("LCD config saved: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d, largeTimeout=%d\n", 
+                  lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll, largeDisplayTimeout);
 }
 
 void checkBatteryAlarm() {
@@ -183,6 +196,9 @@ void setup() {
     Serial.println("STARTUP: calling M5.begin()");
     M5.begin();
     Serial.println("STARTUP: M5.begin() returned");
+    
+    // Initialize user interaction timestamp
+    lastUserInteraction = millis();
     
     // Load buzzer configuration
     Serial.println("STARTUP: loading buzzer config");
@@ -365,6 +381,12 @@ void updateDeviceList() {
 }
 
 void drawDisplay() {
+    // Check if we're in large display mode
+    if (largeDisplayMode) {
+        drawLargeDisplay();
+        return;
+    }
+    
     if (webConfigMode) {
         // Show web configuration screen
         M5.Lcd.fillScreen(BLACK);
@@ -437,6 +459,11 @@ void drawDisplay() {
     if (device->hasPower) dataItemCount++;
     if (device->hasSOC) dataItemCount++;
     if (device->hasTemperature) dataItemCount++;
+    // Add SmartShunt specific fields
+    if (device->type == DEVICE_SMART_SHUNT) {
+        if (device->consumedAh != 0) dataItemCount++;  // Consumed Ah
+        if (device->timeToGo != 0) dataItemCount++;    // Time to Go
+    }
     if (device->hasAcOut) {
         dataItemCount++;
         if (device->acOutCurrent != 0 || device->acOutPower != 0) dataItemCount++;
@@ -447,7 +474,8 @@ void drawDisplay() {
     // Calculate if we need vertical scrolling
     int totalContentHeight = dataItemCount * lineSpacing;
     bool needsVerticalScroll = (totalContentHeight > dataAreaHeight);
-    int maxScrollOffset = needsVerticalScroll ? (dataItemCount - (dataAreaHeight / lineSpacing)) : 0;
+    int maxItemsVisible = dataAreaHeight / lineSpacing;  // How many items can fit on screen
+    int maxScrollOffset = needsVerticalScroll ? (dataItemCount - maxItemsVisible) : 0;
     
     // Clamp scroll offset
     if (verticalScrollOffset > maxScrollOffset) {
@@ -510,6 +538,8 @@ void drawDisplay() {
     static float lastPower = -999.0;
     static float lastSOC = -999.0;
     static float lastTemp = -999.0;
+    static float lastConsumedAh = -999.0;
+    static int lastTimeToGo = -999;
     static bool lastDataValid = false;
     
     // Reset cache on device change
@@ -519,179 +549,265 @@ void drawDisplay() {
         lastPower = -999.0;
         lastSOC = -999.0;
         lastTemp = -999.0;
+        lastConsumedAh = -999.0;
+        lastTimeToGo = -999;
         lastDataValid = false;
     }
     
-    int y = 30;
+    int y = dataStartY;
+    int itemIndex = 0;  // Track which data item we're on
+    int visibleItemCount = 0;  // Track how many items we've rendered
+    
+    // Helper lambda to check if item should be rendered
+    auto shouldRenderItem = [&]() -> bool {
+        if (!needsVerticalScroll) return true;  // No scrolling needed, render all
+        if (itemIndex < verticalScrollOffset) return false;  // Before visible window
+        if (visibleItemCount >= maxItemsVisible) return false;  // After visible window
+        return true;
+    };
+    
+    // Helper lambda to advance to next item
+    auto nextItem = [&]() {
+        itemIndex++;
+        if (shouldRenderItem()) {
+            visibleItemCount++;
+            y += lineSpacing;
+        }
+    };
     
     // Voltage
-    M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-    M5.Lcd.setTextColor(GREEN, BLACK);
-    M5.Lcd.setCursor(5, y);
-    M5.Lcd.print("Voltage:");
-    
-    if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
-        // Clear value area before redrawing
-        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-        M5.Lcd.setTextSize(lcdFontSize);
-        M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(valueColumnX, y);
-        if (device->dataValid) {
-            M5.Lcd.printf("%.2f V", device->voltage);
-            lastVoltage = device->voltage;
-        } else {
-            M5.Lcd.print("-- V");
-        }
-        lastDataValid = device->dataValid;
-    }
-    y += lineSpacing;
-    
-    // Current
-    M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-    M5.Lcd.setTextColor(GREEN, BLACK);
-    M5.Lcd.setCursor(5, y);
-    M5.Lcd.print("Current:");
-    
-    if (deviceChanged || device->current != lastCurrent || device->dataValid != lastDataValid) {
-        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-        M5.Lcd.setTextSize(lcdFontSize);
-        M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(valueColumnX, y);
-        if (device->dataValid) {
-            M5.Lcd.printf("%.2f A", device->current);
-            lastCurrent = device->current;
-        } else {
-            M5.Lcd.print("-- A");
-        }
-    }
-    y += lineSpacing;
-    
-    // Power
-    if (device->hasPower) {
+    if (shouldRenderItem()) {
         M5.Lcd.setTextSize(TITLE_FONT_SIZE);
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("Power:");
+        M5.Lcd.print("Voltage:");
         
-        if (deviceChanged || device->power != lastPower) {
+        if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+            // Clear value area before redrawing
             M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.1f W", device->power);
-            lastPower = device->power;
+            if (device->dataValid) {
+                M5.Lcd.printf("%.2f V", device->voltage);
+                lastVoltage = device->voltage;
+            } else {
+                M5.Lcd.print("-- V");
+            }
+            lastDataValid = device->dataValid;
         }
-        y += lineSpacing;
+    }
+    nextItem();
+    
+    // Current
+    if (shouldRenderItem()) {
+        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("Current:");
+        
+        if (deviceChanged || device->current != lastCurrent || device->dataValid != lastDataValid) {
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+            M5.Lcd.setTextSize(lcdFontSize);
+            M5.Lcd.setTextColor(WHITE, BLACK);
+            M5.Lcd.setCursor(valueColumnX, y);
+            if (device->dataValid) {
+                M5.Lcd.printf("%.2f A", device->current);
+                lastCurrent = device->current;
+            } else {
+                M5.Lcd.print("-- A");
+            }
+        }
+    }
+    nextItem();
+    
+    // Power
+    if (device->hasPower) {
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Power:");
+            
+            if (deviceChanged || device->power != lastPower) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.1f W", device->power);
+                lastPower = device->power;
+            }
+        }
+        nextItem();
     }
     
     // Battery SOC (State of Charge) - for Smart Shunt
     if (device->hasSOC) {
-        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("Battery:");
-        
-        if (deviceChanged || device->batterySOC != lastSOC) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-            M5.Lcd.setTextSize(lcdFontSize);
-            uint16_t color = WHITE;
-            if (device->batterySOC <= 20) {
-                color = RED;
-            } else if (device->batterySOC <= 50) {
-                color = YELLOW;
-            } else {
-                color = GREEN;
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Battery:");
+            
+            if (deviceChanged || device->batterySOC != lastSOC) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                uint16_t color = WHITE;
+                if (device->batterySOC <= 20) {
+                    color = RED;
+                } else if (device->batterySOC <= 50) {
+                    color = YELLOW;
+                } else {
+                    color = GREEN;
+                }
+                M5.Lcd.setTextColor(color, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.1f %%", device->batterySOC);
+                lastSOC = device->batterySOC;
             }
-            M5.Lcd.setTextColor(color, BLACK);
-            M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.1f %%", device->batterySOC);
-            lastSOC = device->batterySOC;
         }
-        y += lineSpacing;
+        nextItem();
+    }
+    
+    // Consumed Ah - for Smart Shunt
+    if (device->type == DEVICE_SMART_SHUNT && device->consumedAh != 0) {
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Consumed:");
+            
+            if (deviceChanged || device->consumedAh != lastConsumedAh) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.1f Ah", device->consumedAh);
+                lastConsumedAh = device->consumedAh;
+            }
+        }
+        nextItem();
+    }
+    
+    // Time to Go - for Smart Shunt
+    if (device->type == DEVICE_SMART_SHUNT && device->timeToGo != 0) {
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Time2Go:");
+            
+            if (deviceChanged || device->timeToGo != lastTimeToGo) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                // Convert minutes to hours and minutes for better readability
+                if (device->timeToGo >= 60) {
+                    int hours = device->timeToGo / 60;
+                    int minutes = device->timeToGo % 60;
+                    M5.Lcd.printf("%dh %dm", hours, minutes);
+                } else {
+                    M5.Lcd.printf("%d min", device->timeToGo);
+                }
+                lastTimeToGo = device->timeToGo;
+            }
+        }
+        nextItem();
     }
     
     // Temperature
     if (device->hasTemperature) {
-        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("Temp:");
-        
-        if (deviceChanged || device->temperature != lastTemp) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-            M5.Lcd.setTextSize(lcdFontSize);
-            M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.1f C", device->temperature);
-            lastTemp = device->temperature;
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Temp:");
+            
+            if (deviceChanged || device->temperature != lastTemp) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.1f C", device->temperature);
+                lastTemp = device->temperature;
+            }
         }
-        y += lineSpacing;
+        nextItem();
     }
     
     // Inverter AC Output
     if (device->hasAcOut) {
-        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("AC Out:");
-        
-        if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-            M5.Lcd.setTextSize(lcdFontSize);
-            M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.1f V", device->acOutVoltage);
-        }
-        y += lineSpacing;
-        
-        if (device->acOutCurrent != 0 || device->acOutPower != 0) {
+        if (shouldRenderItem()) {
             M5.Lcd.setTextSize(TITLE_FONT_SIZE);
             M5.Lcd.setTextColor(GREEN, BLACK);
             M5.Lcd.setCursor(5, y);
-            M5.Lcd.print("AC Pwr:");
+            M5.Lcd.print("AC Out:");
             
             if (deviceChanged) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
                 M5.Lcd.setCursor(valueColumnX, y);
-                M5.Lcd.printf("%.0f W", device->acOutPower);
+                M5.Lcd.printf("%.1f V", device->acOutVoltage);
             }
-            y += lineSpacing;
+        }
+        nextItem();
+        
+        if (device->acOutCurrent != 0 || device->acOutPower != 0) {
+            if (shouldRenderItem()) {
+                M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+                M5.Lcd.setTextColor(GREEN, BLACK);
+                M5.Lcd.setCursor(5, y);
+                M5.Lcd.print("AC Pwr:");
+                
+                if (deviceChanged) {
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    M5.Lcd.setTextSize(lcdFontSize);
+                    M5.Lcd.setTextColor(WHITE, BLACK);
+                    M5.Lcd.setCursor(valueColumnX, y);
+                    M5.Lcd.printf("%.0f W", device->acOutPower);
+                }
+            }
+            nextItem();
         }
     }
     
     // DC-DC Converter voltages
     if (device->hasInputVoltage) {
-        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("In:");
-        
-        if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-            M5.Lcd.setTextSize(lcdFontSize);
-            M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.2f V", device->inputVoltage);
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("In:");
+            
+            if (deviceChanged) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.2f V", device->inputVoltage);
+            }
         }
-        y += lineSpacing;
+        nextItem();
     }
     
     if (device->hasOutputVoltage) {
-        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.setCursor(5, y);
-        M5.Lcd.print("Out:");
-        
-        if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
-            M5.Lcd.setTextSize(lcdFontSize);
-            M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(valueColumnX, y);
-            M5.Lcd.printf("%.2f V", device->outputVoltage);
+        if (shouldRenderItem()) {
+            M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+            M5.Lcd.setTextColor(GREEN, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("Out:");
+            
+            if (deviceChanged) {
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                M5.Lcd.setTextSize(lcdFontSize);
+                M5.Lcd.setTextColor(WHITE, BLACK);
+                M5.Lcd.setCursor(valueColumnX, y);
+                M5.Lcd.printf("%.2f V", device->outputVoltage);
+            }
         }
-        y += lineSpacing;
+        nextItem();
     }
     
     // Draw bottom instructions (only on device change to reduce flicker)
@@ -700,29 +816,37 @@ void drawDisplay() {
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(DARKGREY, BLACK);
         M5.Lcd.setCursor(5, bottomY + 8);
-        M5.Lcd.print("M5: Next Device");
+        if (needsVerticalScroll) {
+            M5.Lcd.print("Auto-scroll ON");
+        } else {
+            M5.Lcd.print("M5: Next Device");
+        }
     }
     
     // Show scroll indicator if content overflows
     if (needsVerticalScroll) {
-        // Draw scroll indicator arrows on the right side
+        // Draw scroll indicator showing position
         int indicatorX = screenWidth - 10;
         int indicatorY = bottomY - 15;
         
-        // Clear previous indicator
-        M5.Lcd.fillRect(indicatorX - 5, indicatorY - 10, 15, 20, BLACK);
+        // Clear previous indicator area
+        M5.Lcd.fillRect(indicatorX - 5, indicatorY - 10, 15, 25, BLACK);
         
         M5.Lcd.setTextSize(1);
+        // Show current scroll position: first visible item / total items
+        M5.Lcd.setTextColor(YELLOW, BLACK);
+        M5.Lcd.setCursor(indicatorX - 10, indicatorY);
+        M5.Lcd.printf("%d/%d", verticalScrollOffset + 1, dataItemCount);
+        
+        // Show scroll arrows
         if (verticalScrollOffset > 0) {
             // Show up arrow if we can scroll up
-            M5.Lcd.setTextColor(YELLOW, BLACK);
             M5.Lcd.setCursor(indicatorX, indicatorY - 8);
             M5.Lcd.print("^");
         }
         if (verticalScrollOffset < maxScrollOffset) {
             // Show down arrow if we can scroll down
-            M5.Lcd.setTextColor(YELLOW, BLACK);
-            M5.Lcd.setCursor(indicatorX, indicatorY + 4);
+            M5.Lcd.setCursor(indicatorX, indicatorY + 10);
             M5.Lcd.print("v");
         }
     }
@@ -739,6 +863,150 @@ void drawDisplay() {
         M5.Lcd.setTextColor(RED, BLACK);
     }
     M5.Lcd.printf("RSSI:%d", device->rssi);
+}
+
+void drawLargeDisplay() {
+    // Large display mode: Show only Voltage, Current, and Battery SOC in large font
+    // This mode is designed for SmartShunt devices, but will work with any device that has the data
+    
+    if (deviceAddresses.empty()) {
+        return;
+    }
+    
+    VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+    
+    if (!device) {
+        return;
+    }
+    
+    // Track if this is a new device to force full redraw
+    static String lastDeviceAddress = "";
+    bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
+    if (deviceChanged) {
+        M5.Lcd.fillScreen(BLACK);
+        lastDeviceAddress = deviceAddresses[currentDeviceIndex];
+    }
+    
+    // Use landscape orientation for large display
+    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
+    const int screenHeight = (lcdOrientation == "portrait") ? 240 : 135;
+    
+    // Cache previous values to reduce flicker
+    static float lastVoltage = -999.0;
+    static float lastCurrent = -999.0;
+    static float lastSOC = -999.0;
+    static bool lastDataValid = false;
+    
+    // Reset cache on device change
+    if (deviceChanged) {
+        lastVoltage = -999.0;
+        lastCurrent = -999.0;
+        lastSOC = -999.0;
+        lastDataValid = false;
+    }
+    
+    // Device name header (small font)
+    if (deviceChanged) {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.setCursor(5, 0);
+        String deviceName = device->name;
+        if (deviceName.length() > 26) {
+            deviceName = deviceName.substring(0, 23) + "...";
+        }
+        M5.Lcd.println(deviceName);
+        
+        // Draw separator line
+        M5.Lcd.drawLine(0, 12, screenWidth, 12, DARKGREY);
+    }
+    
+    // Calculate vertical spacing for 3 large values
+    int startY = 20;
+    int spacing = (screenHeight - startY - 20) / 3;  // Divide remaining space by 3
+    int y = startY;
+    
+    // Large Voltage display
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(GREEN, BLACK);
+    M5.Lcd.setCursor(5, y);
+    M5.Lcd.print("VOLTAGE");
+    
+    if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+        M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+        M5.Lcd.setTextSize(3);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(5, y + 12);
+        if (device->dataValid) {
+            M5.Lcd.printf("%.2f V", device->voltage);
+            lastVoltage = device->voltage;
+        } else {
+            M5.Lcd.print("-- V");
+        }
+        lastDataValid = device->dataValid;
+    }
+    y += spacing;
+    
+    // Large Current display
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(GREEN, BLACK);
+    M5.Lcd.setCursor(5, y);
+    M5.Lcd.print("CURRENT");
+    
+    if (deviceChanged || device->current != lastCurrent) {
+        M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+        M5.Lcd.setTextSize(3);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(5, y + 12);
+        if (device->dataValid) {
+            M5.Lcd.printf("%.2f A", device->current);
+            lastCurrent = device->current;
+        } else {
+            M5.Lcd.print("-- A");
+        }
+    }
+    y += spacing;
+    
+    // Large Battery SOC display (if available)
+    if (device->hasSOC) {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("BATTERY SOC");
+        
+        if (deviceChanged || device->batterySOC != lastSOC) {
+            M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+            M5.Lcd.setTextSize(3);
+            uint16_t color = WHITE;
+            if (device->batterySOC <= 20) {
+                color = RED;
+            } else if (device->batterySOC <= 50) {
+                color = YELLOW;
+            } else {
+                color = GREEN;
+            }
+            M5.Lcd.setTextColor(color, BLACK);
+            M5.Lcd.setCursor(5, y + 12);
+            M5.Lcd.printf("%.1f %%", device->batterySOC);
+            lastSOC = device->batterySOC;
+        }
+    } else {
+        // If no SOC available, show a message
+        if (deviceChanged) {
+            M5.Lcd.setTextSize(1);
+            M5.Lcd.setTextColor(DARKGREY, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("(No SOC data)");
+        }
+    }
+    
+    // Bottom instructions
+    if (deviceChanged) {
+        M5.Lcd.drawLine(0, screenHeight - 12, screenWidth, screenHeight - 12, DARKGREY);
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(DARKGREY, BLACK);
+        M5.Lcd.setCursor(5, screenHeight - 8);
+        M5.Lcd.print("M5: Exit Large Mode");
+    }
 }
 
 void loop() {
@@ -758,7 +1026,9 @@ void loop() {
     if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {
         if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
             lastButtonPressTime = currentTime;
+            lastUserInteraction = currentTime;  // Reset timeout
             webConfigMode = !webConfigMode;
+            largeDisplayMode = false;  // Exit large mode when entering web config
             drawDisplay();
             longPressHandled = true;
         }
@@ -767,15 +1037,56 @@ void loop() {
     // Reset long press flag when button is released
     if (M5.BtnA.wasReleased()) {
         longPressHandled = false;
+        // Don't reset waitingForDoublePress here - let the timeout handle it
     }
     
-    // Button A: Switch to next device or go back from config mode (only if not a long press)
+    // Button A: Handle single press, double press for large display mode toggle
     if (M5.BtnA.wasPressed() && !longPressHandled && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
-        lastButtonPressTime = currentTime;
+        lastUserInteraction = currentTime;  // Reset timeout
         
+        // Check if this is a double press
+        if (waitingForDoublePress && (currentTime - lastButtonClickTime < DOUBLE_PRESS_INTERVAL)) {
+            // Double press detected - toggle large display mode
+            Serial.println("Double press detected - toggling large display mode");
+            waitingForDoublePress = false;
+            
+            // Exit large mode if already in it
+            if (largeDisplayMode) {
+                largeDisplayMode = false;
+                Serial.println("Exiting large display mode");
+            }
+            // Enter large display mode if we're in normal mode with a SmartShunt device
+            else if (!webConfigMode && !deviceAddresses.empty()) {
+                VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+                if (device && device->type == DEVICE_SMART_SHUNT) {
+                    largeDisplayMode = true;
+                    Serial.println("Entering large display mode");
+                } else {
+                    Serial.println("Large display mode only works with SmartShunt devices");
+                }
+            }
+            drawDisplay();
+            lastButtonPressTime = currentTime;
+        } else {
+            // Single press - start waiting for potential double press
+            lastButtonClickTime = currentTime;
+            waitingForDoublePress = true;
+            lastButtonPressTime = currentTime;
+        }
+    }
+    
+    // Process single press action after double-press timeout
+    if (waitingForDoublePress && (currentTime - lastButtonClickTime > DOUBLE_PRESS_INTERVAL)) {
+        waitingForDoublePress = false;
+        
+        // Now process as single press
         if (deviceAddresses.empty()) {
             // If no devices found, toggle web config display
             webConfigMode = !webConfigMode;
+            drawDisplay();
+        } else if (largeDisplayMode) {
+            // In large display mode: exit it
+            largeDisplayMode = false;
             drawDisplay();
         } else if (!webConfigMode) {
             // Normal mode: cycle through devices
@@ -786,6 +1097,19 @@ void loop() {
             // Config mode: go back to normal mode
             webConfigMode = false;
             drawDisplay();
+        }
+    }
+    
+    // Auto-enter large display mode after timeout (if enabled and not already in large/web config mode)
+    if (largeDisplayTimeout > 0 && !largeDisplayMode && !webConfigMode && !deviceAddresses.empty()) {
+        if (currentTime - lastUserInteraction > (largeDisplayTimeout * 1000)) {
+            // Check if current device is a SmartShunt
+            VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+            if (device && device->type == DEVICE_SMART_SHUNT) {
+                Serial.println("Auto-entering large display mode due to inactivity");
+                largeDisplayMode = true;
+                drawDisplay();
+            }
         }
     }
     
@@ -804,8 +1128,47 @@ void loop() {
     }
     
     // Update display periodically (only in normal mode with devices)
-    if (!webConfigMode && currentTime - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
+    if (!webConfigMode && !largeDisplayMode && currentTime - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
         if (!deviceAddresses.empty()) {
+            // Get current device to check if it needs scrolling
+            VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+            if (device) {
+                // Count data items to see if scrolling is needed
+                int dataItemCount = 2;  // Voltage and Current
+                if (device->hasPower) dataItemCount++;
+                if (device->hasSOC) dataItemCount++;
+                if (device->hasTemperature) dataItemCount++;
+                if (device->type == DEVICE_SMART_SHUNT) {
+                    if (device->consumedAh != 0) dataItemCount++;
+                    if (device->timeToGo != 0) dataItemCount++;
+                }
+                if (device->hasAcOut) {
+                    dataItemCount++;
+                    if (device->acOutCurrent != 0 || device->acOutPower != 0) dataItemCount++;
+                }
+                if (device->hasInputVoltage) dataItemCount++;
+                if (device->hasOutputVoltage) dataItemCount++;
+                
+                // Calculate if scrolling is needed
+                const int lineSpacing = 15 * lcdFontSize;
+                const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
+                const int dataStartY = 30;
+                const int dataAreaHeight = bottomY - dataStartY;
+                int maxItemsVisible = dataAreaHeight / lineSpacing;
+                bool needsScroll = (dataItemCount > maxItemsVisible);
+                
+                // Auto-scroll vertically if needed
+                if (needsScroll && currentTime - lastVerticalScroll > VERTICAL_SCROLL_INTERVAL) {
+                    int maxScrollOffset = dataItemCount - maxItemsVisible;
+                    verticalScrollOffset++;
+                    if (verticalScrollOffset > maxScrollOffset) {
+                        verticalScrollOffset = 0;  // Wrap back to top
+                    }
+                    lastVerticalScroll = currentTime;
+                    Serial.printf("Vertical scroll: %d (max: %d)\n", verticalScrollOffset, maxScrollOffset);
+                }
+            }
+            
             // Auto-scroll between devices based on scrollRate setting (only if autoScroll is enabled)
             if (lcdAutoScroll && deviceAddresses.size() > 1 && currentTime - lastDeviceSwitch > (lcdScrollRate * 1000)) {
                 currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
