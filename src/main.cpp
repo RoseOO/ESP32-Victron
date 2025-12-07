@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <vector>
 #include <Preferences.h>
+#include <ArduinoOTA.h>
 #include "NoDebug.h"
 
 // Add the project headers that define the classes/types used below.
@@ -194,6 +195,88 @@ void setup() {
     Serial.println("STARTUP: attempting webServer->begin()");
     webServer->begin();
     Serial.println("STARTUP: webServer->begin() returned");
+
+    // Initialize ArduinoOTA for over-the-air firmware updates
+    Serial.println("STARTUP: initializing ArduinoOTA");
+    ArduinoOTA.setHostname("ESP32-Victron");
+    ArduinoOTA.setPassword("victron123");  // Set OTA password for security
+    
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH) {
+            type = "sketch";
+        } else {  // U_SPIFFS
+            type = "filesystem";
+        }
+        Serial.println("OTA: Start updating " + type);
+        // Display OTA progress on screen
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(2);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.setCursor(10, 10);
+        M5.Lcd.println("OTA Update");
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setCursor(10, 40);
+        M5.Lcd.println("Starting...");
+    });
+    
+    ArduinoOTA.onEnd([]() {
+        Serial.println("\nOTA: Update complete");
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.println("Update Complete!");
+        M5.Lcd.setCursor(10, 85);
+        M5.Lcd.println("Rebooting...");
+    });
+    
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        unsigned int percent = (progress / (total / 100));
+        Serial.printf("OTA Progress: %u%%\r", percent);
+        // Update progress bar on screen
+        M5.Lcd.fillRect(10, 55, 220, 10, BLACK);
+        M5.Lcd.drawRect(10, 55, 220, 10, WHITE);
+        M5.Lcd.fillRect(11, 56, (percent * 218) / 100, 8, GREEN);
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.printf("Progress: %u%%  ", percent);
+    });
+    
+    ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("OTA Error[%u]: ", error);
+        M5.Lcd.fillRect(0, 70, 240, 60, BLACK);
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(RED, BLACK);
+        M5.Lcd.println("Update Failed!");
+        M5.Lcd.setCursor(10, 85);
+        if (error == OTA_AUTH_ERROR) {
+            Serial.println("Auth Failed");
+            M5.Lcd.println("Auth Failed");
+        } else if (error == OTA_BEGIN_ERROR) {
+            Serial.println("Begin Failed");
+            M5.Lcd.println("Begin Failed");
+        } else if (error == OTA_CONNECT_ERROR) {
+            Serial.println("Connect Failed");
+            M5.Lcd.println("Connect Failed");
+        } else if (error == OTA_RECEIVE_ERROR) {
+            Serial.println("Receive Failed");
+            M5.Lcd.println("Receive Failed");
+        } else if (error == OTA_END_ERROR) {
+            Serial.println("End Failed");
+            M5.Lcd.println("End Failed");
+        }
+    });
+    
+    ArduinoOTA.begin();
+    Serial.println("STARTUP: ArduinoOTA initialized");
+    Serial.println("OTA: Ready for updates");
+    Serial.print("OTA: Hostname: ESP32-Victron");
+    if (webServer->isAPMode()) {
+        Serial.print(" IP: ");
+        Serial.println(WiFi.softAPIP());
+    } else {
+        Serial.print(" IP: ");
+        Serial.println(WiFi.localIP());
+    }
 
     Serial.println("STARTUP: doing a short scan to populate devices");
     victron->scan(2);            // short scan
@@ -450,6 +533,9 @@ void drawDisplay() {
 void loop() {
     M5.update();
     unsigned long currentTime = millis();
+    
+    // Handle ArduinoOTA updates
+    ArduinoOTA.handle();
     
     // Long press button A: toggle web config display (check this first to prevent short press from firing)
     if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {

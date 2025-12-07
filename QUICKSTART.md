@@ -193,6 +193,19 @@ The web interface allows you to:
 
 ## Next Steps
 
+### Update Firmware Wirelessly (OTA)
+
+Once your device is on WiFi, you can update firmware without USB:
+
+```bash
+# PlatformIO
+pio run --target upload --upload-port 192.168.1.100
+
+# Arduino IDE: Tools → Port → Select "ESP32-Victron at [IP]"
+```
+
+**See**: [OTA Updates Guide](docs/OTA_UPDATES.md) for detailed instructions.
+
 ### Customize Your Monitor
 
 Edit these values in the code:

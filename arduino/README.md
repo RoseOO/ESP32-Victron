@@ -52,6 +52,12 @@ Download and install Arduino IDE 2.0 or later from [arduino.cc](https://www.ardu
 3. Wait for compilation and upload to complete
 4. The M5StickC PLUS2 will automatically restart and run the program
 
+### 7. Over-The-Air (OTA) Updates (Optional)
+
+If you want to enable OTA updates for wireless firmware uploads, you'll need to use the PlatformIO version which has OTA pre-configured. See [docs/OTA_UPDATES.md](../../docs/OTA_UPDATES.md) for details.
+
+Alternatively, you can add ArduinoOTA support to this sketch by following the examples in the main PlatformIO version at `src/main.cpp`.
+
 ## Usage
 
 Same as the main project - see the main [README.md](../../README.md) for usage instructions.
