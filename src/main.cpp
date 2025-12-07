@@ -955,9 +955,10 @@ void drawDisplay() {
         M5.Lcd.setTextSize(1);
         // Calculate page numbers for display
         // We scroll one item at a time, but show which "page" of content we're viewing
-        // Current page is based on how many full screens we've scrolled
+        // The page number reflects which page contains the first visible item
+        // Current page is based on which page the first visible item belongs to
         int currentPage = (verticalScrollOffset / maxItemsVisible) + 1;
-        // Total pages: need to show all items, so round up
+        // Total pages: ceiling division to show all items
         int totalPages = (dataItemCount + maxItemsVisible - 1) / maxItemsVisible;
         
         // Show current page / total pages
@@ -1008,6 +1009,7 @@ void drawLargeDisplay() {
     
     // Track if this is a new device to force full redraw
     static String lastDeviceAddress = "";
+    bool modeChanged = !wasInLargeMode;  // We're in large mode now, check if we just came from normal mode
     wasInLargeMode = true;  // Set flag to indicate we're in large mode now
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
     if (deviceChanged) {
@@ -1027,7 +1029,7 @@ void drawLargeDisplay() {
     static bool lastHasSOC = false;  // Track if SOC was available in previous render
     
     // Reset cache on device change OR when just entering large display mode
-    if (deviceChanged || largeDisplayJustEntered) {
+    if (deviceChanged || largeDisplayJustEntered || modeChanged) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastSOC = -999.0;
@@ -1043,7 +1045,7 @@ void drawLargeDisplay() {
     }
     
     // Device name header (small font)
-    if (deviceChanged) {
+    if (deviceChanged || modeChanged) {
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(CYAN, BLACK);
         M5.Lcd.setCursor(5, 0);
@@ -1068,7 +1070,7 @@ void drawLargeDisplay() {
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("VOLTAGE");
     
-    if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+    if (deviceChanged || modeChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
         M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
         M5.Lcd.setTextSize(3);
         M5.Lcd.setTextColor(WHITE, BLACK);
@@ -1089,7 +1091,7 @@ void drawLargeDisplay() {
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("CURRENT");
     
-    if (deviceChanged || device->current != lastCurrent) {
+    if (deviceChanged || modeChanged || device->current != lastCurrent) {
         M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
         M5.Lcd.setTextSize(3);
         M5.Lcd.setTextColor(WHITE, BLACK);
@@ -1115,7 +1117,7 @@ void drawLargeDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("BATTERY SOC");
         
-        if (deviceChanged || socStatusChanged || device->batterySOC != lastSOC) {
+        if (deviceChanged || modeChanged || socStatusChanged || device->batterySOC != lastSOC) {
             M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
             M5.Lcd.setTextSize(3);
             uint16_t color = WHITE;
@@ -1144,7 +1146,7 @@ void drawLargeDisplay() {
     }
     
     // Bottom instructions
-    if (deviceChanged) {
+    if (deviceChanged || modeChanged) {
         M5.Lcd.drawLine(0, screenHeight - 12, screenWidth, screenHeight - 12, DARKGREY);
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(DARKGREY, BLACK);
