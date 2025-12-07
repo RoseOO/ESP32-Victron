@@ -45,7 +45,8 @@ private:
     void loadWiFiConfig();
     void saveDeviceConfigs();
     void loadDeviceConfigs();
-    void syncEncryptionKeys();  // Sync encryption keys to VictronBLE instance
+    void syncEncryptionKeys();  // Sync all encryption keys to VictronBLE instance
+    void syncSingleEncryptionKey(const DeviceConfig& config);  // Sync a single encryption key
     
     // Request handlers
     void handleRoot(AsyncWebServerRequest *request);

@@ -655,10 +655,7 @@ void WebConfigServer::addDeviceConfig(const DeviceConfig& config) {
             // Update existing
             deviceConfigs[i] = config;
             saveDeviceConfigs();
-            // Sync encryption key to VictronBLE
-            if (victronBLE && !config.encryptionKey.isEmpty()) {
-                victronBLE->setEncryptionKey(config.address, config.encryptionKey);
-            }
+            syncSingleEncryptionKey(config);
             return;
         }
     }
@@ -666,10 +663,7 @@ void WebConfigServer::addDeviceConfig(const DeviceConfig& config) {
     // Add new
     deviceConfigs.push_back(config);
     saveDeviceConfigs();
-    // Sync encryption key to VictronBLE
-    if (victronBLE && !config.encryptionKey.isEmpty()) {
-        victronBLE->setEncryptionKey(config.address, config.encryptionKey);
-    }
+    syncSingleEncryptionKey(config);
 }
 
 void WebConfigServer::updateDeviceConfig(const String& address, const DeviceConfig& config) {
@@ -677,10 +671,7 @@ void WebConfigServer::updateDeviceConfig(const String& address, const DeviceConf
         if (deviceConfigs[i].address.equalsIgnoreCase(address)) {
             deviceConfigs[i] = config;
             saveDeviceConfigs();
-            // Sync encryption key to VictronBLE
-            if (victronBLE && !config.encryptionKey.isEmpty()) {
-                victronBLE->setEncryptionKey(config.address, config.encryptionKey);
-            }
+            syncSingleEncryptionKey(config);
             return;
         }
     }
@@ -704,10 +695,14 @@ void WebConfigServer::syncEncryptionKeys() {
     
     // Sync all encryption keys from device configs to VictronBLE
     for (const auto& config : deviceConfigs) {
-        if (!config.encryptionKey.isEmpty()) {
-            victronBLE->setEncryptionKey(config.address, config.encryptionKey);
-            Serial.printf("Synced encryption key for device %s\n", config.address.c_str());
-        }
+        syncSingleEncryptionKey(config);
+    }
+}
+
+void WebConfigServer::syncSingleEncryptionKey(const DeviceConfig& config) {
+    if (victronBLE && !config.encryptionKey.isEmpty()) {
+        victronBLE->setEncryptionKey(config.address, config.encryptionKey);
+        Serial.printf("Synced encryption key for device %s\n", config.address.c_str());
     }
 }
 
