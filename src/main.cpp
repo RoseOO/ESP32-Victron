@@ -320,13 +320,20 @@ void drawDisplay() {
     
     M5.Lcd.fillScreen(BLACK);
     
+    // Calculate layout constants based on font size and orientation
+    const int LCD_LANDSCAPE_MAX_CHARS = 26;
+    const int valueColumnX = 80 * lcdFontSize;
+    const int lineSpacing = 15 * lcdFontSize;
+    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
+    const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
+    const int maxChars = (lcdOrientation == "portrait") ? 10 : (LCD_LANDSCAPE_MAX_CHARS / lcdFontSize);
+    
     // Device name header
     M5.Lcd.setTextSize(lcdFontSize);
     M5.Lcd.setTextColor(CYAN, BLACK);
     M5.Lcd.setCursor(0, 0);
     
     String deviceName = device->name;
-    int maxChars = (lcdOrientation == "portrait") ? 10 : (26 / lcdFontSize);
     if (deviceName.length() > maxChars) {
         deviceName = deviceName.substring(0, maxChars - 3) + "...";
     }
@@ -363,19 +370,18 @@ void drawDisplay() {
     M5.Lcd.printf("%d/%d", currentDeviceIndex + 1, deviceAddresses.size());
     
     // Draw separator line
-    M5.Lcd.drawLine(0, 24 * lcdFontSize, (lcdOrientation == "portrait") ? 135 : 240, 24 * lcdFontSize, DARKGREY);
+    M5.Lcd.drawLine(0, 24 * lcdFontSize, screenWidth, 24 * lcdFontSize, DARKGREY);
     
     // Main data display
     M5.Lcd.setTextSize(lcdFontSize);
     int y = 30 * lcdFontSize;
-    int lineSpacing = 15 * lcdFontSize;
     
     // Voltage
     M5.Lcd.setTextColor(GREEN, BLACK);
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("Voltage:");
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(80 * lcdFontSize, y);
+    M5.Lcd.setCursor(valueColumnX, y);
     if (device->dataValid) {
         M5.Lcd.printf("%.2f V", device->voltage);
     } else {
@@ -388,7 +394,7 @@ void drawDisplay() {
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("Current:");
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(80 * lcdFontSize, y);
+    M5.Lcd.setCursor(valueColumnX, y);
     if (device->dataValid) {
         M5.Lcd.printf("%.2f A", device->current);
     } else {
@@ -402,7 +408,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Power:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f W", device->power);
         y += lineSpacing;
     }
@@ -413,7 +419,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Battery:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         uint16_t color = WHITE;
         if (device->batterySOC <= 20) {
             color = RED;
@@ -434,7 +440,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Temp:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f C", device->temperature);
         y += lineSpacing;
     }
@@ -445,7 +451,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("AC Out:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f V", device->acOutVoltage);
         y += lineSpacing;
         
@@ -454,7 +460,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("AC Pwr:");
             M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(80 * lcdFontSize, y);
+            M5.Lcd.setCursor(valueColumnX, y);
             M5.Lcd.printf("%.0f W", device->acOutPower);
             y += lineSpacing;
         }
@@ -466,7 +472,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("In:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.2f V", device->inputVoltage);
         y += lineSpacing;
     }
@@ -476,14 +482,13 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Out:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80 * lcdFontSize, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.2f V", device->outputVoltage);
         y += lineSpacing;
     }
     
     // Draw bottom instructions
-    int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
-    M5.Lcd.drawLine(0, bottomY, (lcdOrientation == "portrait") ? 135 : 240, bottomY, DARKGREY);
+    M5.Lcd.drawLine(0, bottomY, screenWidth, bottomY, DARKGREY);
     M5.Lcd.setTextSize(1);
     M5.Lcd.setTextColor(DARKGREY, BLACK);
     M5.Lcd.setCursor(5, bottomY + 8);
@@ -531,6 +536,7 @@ void loop() {
         } else if (!webConfigMode) {
             // Normal mode: cycle through devices
             currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
+            lastDeviceSwitch = currentTime;  // Reset auto-scroll timer when manually switching
             drawDisplay();
         } else {
             // Config mode: go back to normal mode
