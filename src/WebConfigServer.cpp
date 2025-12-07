@@ -313,6 +313,13 @@ void WebConfigServer::handleGetLiveData(AsyncWebServerRequest *request) {
         json += "\"chargerError\":" + String(device->chargerError) + ",";
         json += "\"alarmState\":" + String(device->alarmState) + ",";
         json += "\"offReason\":" + String(device->offReason) + ",";
+        
+        // Add human-readable off reason text for DC-DC converters
+        String offReasonText = VictronBLE::offReasonToString(device->offReason);
+        // Escape quotes in the string for JSON
+        offReasonText.replace("\"", "\\\"");
+        json += "\"offReasonText\":\"" + offReasonText + "\",";
+        
         json += "\"acOutVoltage\":" + String(device->acOutVoltage, 2) + ",";
         json += "\"acOutCurrent\":" + String(device->acOutCurrent, 2) + ",";
         json += "\"acOutPower\":" + String(device->acOutPower, 1) + ",";

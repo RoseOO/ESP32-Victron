@@ -37,6 +37,7 @@ const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
 bool largeDisplayMode = false;  // Toggle for large display mode (voltage, current, SOC only)
+bool largeDisplayJustEntered = false;  // Track when we just entered large display mode to reset cache
 int verticalScrollOffset = 0;  // Current vertical scroll position (0-based index of first visible item)
 
 // Button double-press detection
@@ -854,13 +855,71 @@ void drawDisplay() {
                 M5.Lcd.print("Off:");
                 
                 if (deviceChanged) {
-                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
+                    
+                    // Constants for text wrapping calculations
+                    const int PIXELS_PER_CHAR = 6;  // Approx width per character at font size 1
+                    const int LINE_SPACING_PIXELS = 2;  // Vertical spacing between lines
+                    const int RIGHT_MARGIN = 5;  // Right margin in pixels
+                    const int MAX_WRAP_LINES = 3;  // Maximum number of lines for wrapped text
+                    
+                    // Calculate available width for text (right-aligned)
+                    const int availableWidth = screenWidth - valueColumnX - RIGHT_MARGIN;
+                    const int charsPerLine = availableWidth / PIXELS_PER_CHAR;
+                    
+                    // Clear the entire area for wrapped text
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 
+                                   FONT_HEIGHT_PIXELS * MAX_WRAP_LINES + (MAX_WRAP_LINES - 1) * LINE_SPACING_PIXELS, BLACK);
+                    
                     M5.Lcd.setTextSize(1);  // Use small font for reason text
                     M5.Lcd.setTextColor(YELLOW, BLACK);
-                    M5.Lcd.setCursor(valueColumnX, y);
-                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
-                    if (reasonStr.length() > 12) reasonStr = reasonStr.substring(0, 12);
-                    M5.Lcd.print(reasonStr);
+                    
+                    // Wrap text across multiple lines, keeping right-aligned
+                    int currentLine = 0;
+                    int startPos = 0;
+                    while (startPos < reasonStr.length() && currentLine < MAX_WRAP_LINES) {
+                        String line;
+                        
+                        // Extract substring for this line
+                        if (startPos + charsPerLine >= reasonStr.length()) {
+                            // Last line - take remaining text
+                            line = reasonStr.substring(startPos);
+                        } else {
+                            // Try to break at a word boundary (space or semicolon)
+                            int endPos = startPos + charsPerLine;
+                            int lastSpace = reasonStr.lastIndexOf(' ', endPos);
+                            int lastSemi = reasonStr.lastIndexOf(';', endPos);
+                            // Choose the rightmost valid break point (both return -1 if not found)
+                            int breakPos = max(lastSpace, lastSemi);
+                            
+                            // Only use break point if it's valid (within startPos and endPos)
+                            // If both lastSpace and lastSemi are -1, breakPos will be -1 and this check will fail
+                            if (breakPos > startPos && breakPos <= endPos) {
+                                // Found a good break point - exclude the delimiter from the line
+                                line = reasonStr.substring(startPos, breakPos);
+                                startPos = breakPos + 1;  // Skip past the delimiter
+                                // Skip any additional leading spaces on next line
+                                while (startPos < reasonStr.length() && reasonStr.charAt(startPos) == ' ') {
+                                    startPos++;
+                                }
+                            } else {
+                                // No good break point, hard break
+                                line = reasonStr.substring(startPos, endPos);
+                                startPos = endPos;
+                            }
+                        }
+                        
+                        // Right-align the text
+                        int textWidth = line.length() * PIXELS_PER_CHAR;
+                        int xPos = screenWidth - textWidth - RIGHT_MARGIN;
+                        if (xPos < valueColumnX) xPos = valueColumnX;  // Don't go past left boundary
+                        
+                        M5.Lcd.setCursor(xPos, y + currentLine * (FONT_HEIGHT_PIXELS + LINE_SPACING_PIXELS));
+                        M5.Lcd.print(line);
+                        
+                        currentLine++;
+                        if (startPos >= reasonStr.length()) break;
+                    }
                 }
             }
             nextItem();
@@ -955,13 +1014,14 @@ void drawLargeDisplay() {
     static bool lastDataValid = false;
     static bool lastHasSOC = false;  // Track if SOC was available in previous render
     
-    // Reset cache on device change
-    if (deviceChanged) {
+    // Reset cache on device change OR when just entering large display mode
+    if (deviceChanged || largeDisplayJustEntered) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastSOC = -999.0;
         lastDataValid = false;
         lastHasSOC = false;
+        largeDisplayJustEntered = false;  // Clear the flag after reset
     }
     
     // Detect if SOC status changed (became available or unavailable)
@@ -1134,6 +1194,7 @@ void loop() {
                 VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
                 if (device && device->type == DEVICE_SMART_SHUNT) {
                     largeDisplayMode = true;
+                    largeDisplayJustEntered = true;  // Set flag to reset cache
                     M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                     Serial.println("Entering large display mode");
                 } else {
@@ -1187,6 +1248,7 @@ void loop() {
             if (device && device->type == DEVICE_SMART_SHUNT) {
                 Serial.println("Auto-entering large display mode due to inactivity");
                 largeDisplayMode = true;
+                largeDisplayJustEntered = true;  // Set flag to reset cache
                 M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                 drawDisplay();
             }
