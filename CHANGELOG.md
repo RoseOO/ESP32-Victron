@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Over-The-Air (OTA) Updates**: Wireless firmware updates without USB cable
+  - ArduinoOTA integration for remote firmware uploads
+  - Hostname: ESP32-Victron for easy network discovery
+  - Password protection for secure updates (default: victron123)
+  - Visual progress display on M5 screen during updates
+  - Error handling and status reporting
+  - Support for both firmware and filesystem updates
+  - Works with PlatformIO and Arduino IDE
+  - Automatic IP address logging to serial monitor on startup
 - **Data Retention Feature**: Retain last good decoded data when parsing fails
   - Added `retainLastData` preference (enabled by default) to preserve last valid readings
   - Implemented intelligent data merging in `VictronBLE::mergeDeviceData()`
@@ -253,14 +262,10 @@ This version specifically targets the M5StickC PLUS2 hardware. If you are using 
 ## [Unreleased]
 
 ### Planned Features
-- Full AES-128-CTR decryption implementation for encrypted devices
-- MQTT publishing for home automation integration
 - Data logging to SD card
 - Historical data graphs
 - HTTPS support for web interface
 - Authentication/login system for web interface
-- OTA (Over-The-Air) firmware updates via web interface
-- Battery low alarm functionality
 - Deep sleep mode for extended battery life
 
 ### Under Consideration

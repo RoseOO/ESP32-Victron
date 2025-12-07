@@ -163,7 +163,6 @@ Before submitting a pull request:
 ### Low Priority
 
 - [ ] Custom display themes
-- [ ] OTA (Over-The-Air) updates
 - [ ] Web interface for configuration
 
 ## Victron Protocol

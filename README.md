@@ -9,9 +9,10 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 ## Documentation
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
+- **[OTA Updates Guide](docs/OTA_UPDATES.md)** - Wireless firmware updates (NEW!)
 - **[Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)** - Upload web interface files to ESP32 flash
 - **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
-- **[Data Retention Feature](docs/DATA_RETENTION.md)** - Keep displaying last valid data during temporary issues (NEW!)
+- **[Data Retention Feature](docs/DATA_RETENTION.md)** - Keep displaying last valid data during temporary issues
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
 - **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
 - **[Data Parsing Implementation](docs/DATA_PARSING.md)** - Detailed guide to Victron data parsing
@@ -33,6 +34,11 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
 
 ## Features
 
+- **Over-The-Air (OTA) Updates**: Update firmware wirelessly without USB cable
+  - Upload new firmware via Arduino IDE or PlatformIO
+  - Secure password-protected updates
+  - Visual progress display on M5 screen
+  - No need to physically access the device for updates
 - **Web Configuration Interface**: Configure devices and encryption keys via web browser
   - WiFi Access Point or Station mode
   - Add/edit/delete Victron devices
@@ -177,6 +183,31 @@ To integrate with Home Assistant:
 The device will automatically create sensors in Home Assistant for all discovered Victron devices.
 
 For detailed instructions, see the **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)**.
+
+### Over-The-Air (OTA) Updates
+
+You can update the firmware wirelessly without connecting a USB cable:
+
+#### Using PlatformIO:
+1. Ensure your device is connected to WiFi
+2. Note the device's IP address (shown in web config screen or serial monitor)
+3. Update firmware over the network:
+   ```bash
+   pio run --target upload --upload-port <IP_ADDRESS>
+   ```
+   Example: `pio run --target upload --upload-port 192.168.1.100`
+
+#### Using Arduino IDE:
+1. Go to Tools → Port
+2. Select "ESP32-Victron at <IP_ADDRESS>" from the network ports
+3. Click Upload as usual
+
+**OTA Settings:**
+- **Hostname**: ESP32-Victron
+- **Password**: victron123 (default - should be changed for production)
+- **Progress**: Displayed on M5 screen during update
+
+**Note**: OTA updates are password-protected. The default password is `victron123`. For security in production environments, consider changing this in the source code.
 
 ## Display Layout
 
