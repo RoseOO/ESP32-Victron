@@ -30,7 +30,7 @@ Connect via USB and check the serial output during startup:
 ```
 STARTUP: ArduinoOTA initialized
 OTA: Ready for updates
-OTA: Hostname: ESP32-Victron IP: 192.168.1.100
+OTA: Hostname: ESP32-Victron, IP: 192.168.1.100
 ```
 
 ### Method 2: Web Configuration Screen

@@ -199,6 +199,8 @@ void setup() {
     // Initialize ArduinoOTA for over-the-air firmware updates
     Serial.println("STARTUP: initializing ArduinoOTA");
     ArduinoOTA.setHostname("ESP32-Victron");
+    // NOTE: Default password is "victron123" for ease of use. 
+    // For production deployments, consider changing this to a unique password per device.
     ArduinoOTA.setPassword("victron123");  // Set OTA password for security
     
     ArduinoOTA.onStart([]() {
@@ -230,7 +232,7 @@ void setup() {
     });
     
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        unsigned int percent = (progress / (total / 100));
+        unsigned int percent = (total > 0) ? (progress * 100) / total : 0;
         Serial.printf("OTA Progress: %u%%\r", percent);
         // Update progress bar on screen
         M5.Lcd.fillRect(10, 55, 220, 10, BLACK);
@@ -269,12 +271,10 @@ void setup() {
     ArduinoOTA.begin();
     Serial.println("STARTUP: ArduinoOTA initialized");
     Serial.println("OTA: Ready for updates");
-    Serial.print("OTA: Hostname: ESP32-Victron");
+    Serial.print("OTA: Hostname: ESP32-Victron, IP: ");
     if (webServer->isAPMode()) {
-        Serial.print(" IP: ");
         Serial.println(WiFi.softAPIP());
     } else {
-        Serial.print(" IP: ");
         Serial.println(WiFi.localIP());
     }
 
