@@ -72,11 +72,14 @@ retainLastData=true
 When `retainLastData` is enabled and a device is scanned:
 
 **Always Updated:**
-- Device name and type
 - Signal strength (RSSI)
 - Last update timestamp
 - Raw BLE manufacturer data
 - Encryption status
+
+**Conditionally Updated (when valid in new scan):**
+- Device name (only if not empty in new scan)
+- Device type (only if not DEVICE_UNKNOWN in new scan)
 
 **Updated Only If New Data Is Valid:**
 - Voltage, Current, Power

@@ -862,9 +862,27 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
 // Merge new device data with existing data
 // This preserves the last good values when new parsing fails or returns invalid data
 void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDeviceData& existingData) {
+    // Update name only if new name is not empty (sometimes BLE advertisements don't include the name)
+    if (!newData.name.isEmpty()) {
+        existingData.name = newData.name;
+    } else {
+        Serial.print("Retaining existing device name '");
+        Serial.print(existingData.name);
+        Serial.print("' for ");
+        Serial.print(existingData.address);
+        Serial.println(" (new name empty)");
+    }
+    
+    // Update type only if new type is not DEVICE_UNKNOWN (type is derived from name)
+    if (newData.type != DEVICE_UNKNOWN) {
+        existingData.type = newData.type;
+    } else {
+        Serial.print("Retaining existing device type for ");
+        Serial.print(existingData.address);
+        Serial.println(" (new type unknown)");
+    }
+    
     // Always update these fields regardless of parsing success
-    existingData.name = newData.name;
-    existingData.type = newData.type;
     existingData.rssi = newData.rssi;
     existingData.lastUpdate = newData.lastUpdate;
     existingData.manufacturerId = newData.manufacturerId;

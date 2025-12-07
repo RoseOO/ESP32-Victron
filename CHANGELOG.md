@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configurable via web interface toggle in Live Monitor page
   - Stored in preferences namespace `victron-data` for persistence across reboots
   - Added API endpoints `/api/data-retention` (GET/POST) for configuration
+  - **Device Name and Type Retention**: Preserves device name and type when BLE advertisement omits them
+    - Only updates name if new scan provides non-empty name
+    - Only updates type if new scan provides non-UNKNOWN type
+    - Prevents device display from showing "Unknown" or blank when name is temporarily missing
+    - Added debug logging to track when name/type retention occurs
 - **Full AES-128-CTR Decryption**: Complete implementation of encrypted device support
   - Decrypt Victron BLE advertisement data using AES-128-CTR mode
   - Uses ESP32's built-in `esp_aes` library for hardware-accelerated decryption
