@@ -356,6 +356,19 @@ void VictronBLE::clearEncryptionKeys() {
     encryptionKeys.clear();
 }
 
+// Helper function to convert a hex character to its numeric value
+// Returns -1 for invalid characters
+static int hexCharToValue(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+        return 10 + (c - 'a');
+    } else if (c >= 'A' && c <= 'F') {
+        return 10 + (c - 'A');
+    }
+    return -1;
+}
+
 bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key) {
     // Victron uses AES-128-CTR encryption for BLE data
     // Packet structure:
@@ -386,27 +399,15 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
         char lowNibble = key.charAt(i * 2 + 1);
         
         // Validate and convert high nibble
-        uint8_t highVal;
-        if (highNibble >= '0' && highNibble <= '9') {
-            highVal = highNibble - '0';
-        } else if (highNibble >= 'a' && highNibble <= 'f') {
-            highVal = 10 + (highNibble - 'a');
-        } else if (highNibble >= 'A' && highNibble <= 'F') {
-            highVal = 10 + (highNibble - 'A');
-        } else {
+        int highVal = hexCharToValue(highNibble);
+        if (highVal < 0) {
             Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", highNibble, i * 2);
             return false;
         }
         
         // Validate and convert low nibble
-        uint8_t lowVal;
-        if (lowNibble >= '0' && lowNibble <= '9') {
-            lowVal = lowNibble - '0';
-        } else if (lowNibble >= 'a' && lowNibble <= 'f') {
-            lowVal = 10 + (lowNibble - 'a');
-        } else if (lowNibble >= 'A' && lowNibble <= 'F') {
-            lowVal = 10 + (lowNibble - 'A');
-        } else {
+        int lowVal = hexCharToValue(lowNibble);
+        if (lowVal < 0) {
             Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", lowNibble, i * 2 + 1);
             return false;
         }
@@ -455,11 +456,14 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     }
     
     // Prepare nonce/counter for AES-CTR mode
-    // The counter is initialized with data counter bytes and remaining bytes set to zero
+    // The counter is initialized with data counter bytes (from BLE packet) and remaining bytes set to zero
+    // Format: [dataCounterLSB, dataCounterMSB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    // This follows the Victron BLE AES-CTR specification
     uint8_t nonceCounter[16];
-    memset(nonceCounter, 0, sizeof(nonceCounter));
+    memset(nonceCounter, 0, sizeof(nonceCounter));  // Initialize all 16 bytes to zero
     nonceCounter[0] = dataCounterLSB;
     nonceCounter[1] = dataCounterMSB;
+    // Bytes 2-15 remain zero as per AES-CTR spec
     
     uint8_t streamBlock[16];
     memset(streamBlock, 0, sizeof(streamBlock));
