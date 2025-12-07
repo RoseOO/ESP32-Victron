@@ -107,12 +107,13 @@ void WebConfigServer::startServer() {
     
     server = new AsyncWebServer(80);
     
-    // Common body handler for POST requests with form data
-    // This is required for ESPAsyncWebServer to parse POST body parameters
-    auto bodyHandler = [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-        (void)request; (void)data; (void)len; (void)index; (void)total;
-        // Body is automatically parsed by the library when this handler is present
-    };
+    // Note: For POST endpoints with application/x-www-form-urlencoded content,
+    // we do NOT use a body handler. ESPAsyncWebServer's automatic form parser
+    // works best without a custom body handler. The library will automatically
+    // parse form data and make parameters available via request->getParam("name", true).
+    //
+    // If a custom body handler is needed for raw JSON or other content types,
+    // it should be added per-endpoint, not as a shared handler.
     
     // Serve main page
     server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -144,15 +145,15 @@ void WebConfigServer::startServer() {
     
     server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleAddDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/devices/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleUpdateDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/devices/delete", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleDeleteDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/wifi", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetWiFiConfig(request);
@@ -160,7 +161,7 @@ void WebConfigServer::startServer() {
     
     server->on("/api/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetWiFiConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/mqtt", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetMQTTConfig(request);
@@ -168,7 +169,7 @@ void WebConfigServer::startServer() {
     
     server->on("/api/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetMQTTConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/buzzer", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetBuzzerConfig(request);
@@ -176,11 +177,11 @@ void WebConfigServer::startServer() {
     
     server->on("/api/buzzer", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetBuzzerConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
-    }, NULL, bodyHandler);
+    });
     
     server->begin();
     serverStarted = true;
@@ -344,7 +345,7 @@ void WebConfigServer::handleDeleteDevice(AsyncWebServerRequest *request) {
         removeDeviceConfig(address);
         request->send(200, "application/json", "{\"success\":true}");
     } else {
-        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing address\"}");
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
     }
 }
 
