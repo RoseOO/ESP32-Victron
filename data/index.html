@@ -817,12 +817,20 @@
         document.getElementById('lcdForm').onsubmit = function(e) {
             e.preventDefault();
             
+            const largeTimeout = parseInt(document.getElementById('lcdLargeTimeoutInput').value);
+            
+            // Validate large display timeout (0 = disabled, or 10-300 seconds)
+            if (largeTimeout !== 0 && (largeTimeout < 10 || largeTimeout > 300)) {
+                alert('Large display timeout must be 0 (disabled) or between 10 and 300 seconds');
+                return;
+            }
+            
             const formData = new URLSearchParams();
             formData.append('fontSize', document.getElementById('lcdFontSizeInput').value);
             formData.append('scrollRate', document.getElementById('lcdScrollRateInput').value);
             formData.append('orientation', document.getElementById('lcdOrientationInput').value);
             formData.append('autoScroll', document.getElementById('lcdAutoScrollInput').value);
-            formData.append('largeTimeout', document.getElementById('lcdLargeTimeoutInput').value);
+            formData.append('largeTimeout', largeTimeout);
             
             fetch('/api/lcd', {
                 method: 'POST',
