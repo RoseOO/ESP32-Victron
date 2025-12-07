@@ -143,7 +143,8 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // Check if data is encrypted (byte 4 != 0x00)
     bool isEncrypted = (data[4] != 0x00);
     
-    // For encrypted data, we need at least 10 bytes (header + IV + key check byte)
+    // For encrypted data, we need at least 10 bytes (manufacturer ID, model ID, readout type, 
+    // flags/padding, IV, and key check byte)
     if (isEncrypted && length < 10) {
         Serial.printf("ERROR: Encrypted packet too short: %d bytes (need at least 10)\n", length);
         return false;
@@ -394,7 +395,7 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     // [10+]: Encrypted payload
     
     if (key.isEmpty() || length < 10) {
-        Serial.println("ERROR: Invalid encryption key or data length");
+        Serial.printf("ERROR: Invalid encryption key or data length (minimum 10 bytes required, got %d)\n", length);
         return false;
     }
     
