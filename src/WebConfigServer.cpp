@@ -2,7 +2,7 @@
 #include "VictronBLE.h"
 #include "MQTTPublisher.h"
 
-WebConfigServer::WebConfigServer() : server(nullptr), serverStarted(false), victronBLE(nullptr), mqttPublisher(nullptr) {
+WebConfigServer::WebConfigServer() : server(nullptr), serverStarted(false), filesystemMounted(false), victronBLE(nullptr), mqttPublisher(nullptr) {
 }
 
 WebConfigServer::~WebConfigServer() {
@@ -23,9 +23,11 @@ void WebConfigServer::begin() {
     Serial.println("Initializing Web Configuration Server...");
     
     // Initialize LittleFS
-    if (!LittleFS.begin(true)) {
+    filesystemMounted = LittleFS.begin(true);
+    if (!filesystemMounted) {
         Serial.println("ERROR: Failed to mount LittleFS!");
         Serial.println("Web interface will not work properly.");
+        Serial.println("Please upload filesystem: pio run --target uploadfs");
     } else {
         Serial.println("LittleFS mounted successfully");
     }
@@ -160,10 +162,15 @@ void WebConfigServer::startServer() {
 }
 
 void WebConfigServer::handleRoot(AsyncWebServerRequest *request) {
+    if (!filesystemMounted) {
+        request->send(500, "text/plain", "ERROR: Filesystem not mounted. Please upload filesystem: pio run --target uploadfs");
+        return;
+    }
+    
     if (LittleFS.exists("/index.html")) {
         request->send(LittleFS, "/index.html", "text/html");
     } else {
-        request->send(500, "text/plain", "ERROR: index.html not found in filesystem");
+        request->send(500, "text/plain", "ERROR: index.html not found in filesystem. Please upload filesystem: pio run --target uploadfs");
     }
 }
 
@@ -343,10 +350,15 @@ void WebConfigServer::handleSetWiFiConfig(AsyncWebServerRequest *request) {
 }
 
 void WebConfigServer::handleMonitor(AsyncWebServerRequest *request) {
+    if (!filesystemMounted) {
+        request->send(500, "text/plain", "ERROR: Filesystem not mounted. Please upload filesystem: pio run --target uploadfs");
+        return;
+    }
+    
     if (LittleFS.exists("/monitor.html")) {
         request->send(LittleFS, "/monitor.html", "text/html");
     } else {
-        request->send(500, "text/plain", "ERROR: monitor.html not found in filesystem");
+        request->send(500, "text/plain", "ERROR: monitor.html not found in filesystem. Please upload filesystem: pio run --target uploadfs");
     }
 }
 

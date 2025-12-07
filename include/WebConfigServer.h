@@ -38,6 +38,7 @@ private:
     std::vector<DeviceConfig> deviceConfigs;
     WiFiConfig wifiConfig;
     bool serverStarted;
+    bool filesystemMounted;
     
     // Configuration persistence
     void saveWiFiConfig();
