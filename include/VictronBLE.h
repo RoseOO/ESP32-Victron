@@ -157,6 +157,10 @@ private:
     bool decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key);
     float decodeValue(const uint8_t* data, int len, float scale);
     
+    // Helper function to normalize MAC addresses for comparison
+    // Removes colons and converts to lowercase
+    String normalizeAddress(const String& address);
+    
 public:
     VictronBLE();
     void begin();

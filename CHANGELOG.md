@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Encryption Key Address Matching**: Fixed issue where encryption keys were not being matched to devices
+  - Added MAC address normalization to handle addresses with or without colons
+  - Addresses are now normalized (colons removed, lowercase) before storing/comparing encryption keys
+  - Fixes issue where devices remained encrypted despite adding encryption keys via web interface
+  - Addresses can now be entered in any format: `AA:BB:CC:DD:EE:FF`, `aa:bb:cc:dd:ee:ff`, or `aabbccddeeff`
+
 ## [1.3.1] - 2025-12-06
 
 ### Fixed
