@@ -11,9 +11,10 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
 - **[Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)** - Upload web interface files to ESP32 flash
 - **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
+- **[Data Retention Feature](docs/DATA_RETENTION.md)** - Keep displaying last valid data during temporary issues (NEW!)
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
 - **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
-- **[Data Parsing Implementation](docs/DATA_PARSING.md)** - Detailed guide to Victron data parsing (NEW!)
+- **[Data Parsing Implementation](docs/DATA_PARSING.md)** - Detailed guide to Victron data parsing
 - **[Configuration Examples](examples/CONFIGURATION.md)** - Customization and advanced features
 - **[Arduino IDE Guide](arduino/README.md)** - Arduino IDE specific instructions
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to this project
@@ -42,6 +43,7 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Multiple device cards with real-time updates
   - Signal strength indicators
   - Works on any device with a web browser
+  - **Data Retention**: Preserves last valid readings during temporary decoding issues (configurable)
 - **Home Assistant Integration**: Push data to Home Assistant via MQTT
   - Automatic device discovery
   - Configure MQTT broker via web interface
@@ -63,6 +65,8 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Input/Output Voltage (for DC-DC Converters)
   - Signal Strength (RSSI)
 - **Encryption Support**: Store and manage encryption keys for Victron devices
+  - Full AES-128-CTR decryption support
+  - Secure key storage in ESP32 preferences
 - **Device Switching**: Easily switch between multiple connected Victron devices using the M5 button
 - **Automatic Scanning**: Periodically scans for new devices and updates connections
 - **Compact Display**: Optimized UI for the M5StickC PLUS2's 1.14" LCD screen
