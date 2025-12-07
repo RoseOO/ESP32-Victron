@@ -474,11 +474,14 @@
 
         function deleteDevice(address) {
             if (confirm('Are you sure you want to delete this device?')) {
-                const formData = new FormData();
+                const formData = new URLSearchParams();
                 formData.append('address', address);
                 
                 fetch('/api/devices/delete', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
                     body: formData
                 })
                 .then(r => r.json())
@@ -488,6 +491,9 @@
                     } else {
                         alert('Error: ' + result.error);
                     }
+                })
+                .catch(err => {
+                    alert('Error: ' + err.message);
                 });
             }
         }
@@ -495,15 +501,23 @@
         document.getElementById('deviceForm').onsubmit = function(e) {
             e.preventDefault();
             
-            const formData = new FormData();
+            const formData = new URLSearchParams();
             formData.append('name', document.getElementById('deviceName').value);
             formData.append('address', document.getElementById('deviceAddress').value.toUpperCase());
             formData.append('encryptionKey', document.getElementById('deviceKey').value);
             
             const url = editingAddress ? '/api/devices/update' : '/api/devices';
             
+            // If editing, send the original address to identify which device to update
+            if (editingAddress) {
+                formData.append('oldAddress', editingAddress);
+            }
+            
             fetch(url, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
                 body: formData
             })
             .then(r => r.json())
@@ -514,6 +528,9 @@
                 } else {
                     alert('Error: ' + result.error);
                 }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
             });
         };
 
@@ -543,7 +560,7 @@
         document.getElementById('wifiForm').onsubmit = function(e) {
             e.preventDefault();
             
-            const formData = new FormData();
+            const formData = new URLSearchParams();
             const mode = document.getElementById('wifiMode').value;
             formData.append('apMode', mode === 'ap' ? 'true' : 'false');
             
@@ -557,6 +574,9 @@
             
             fetch('/api/wifi', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
                 body: formData
             })
             .then(r => r.json())
@@ -606,7 +626,7 @@
         document.getElementById('mqttForm').onsubmit = function(e) {
             e.preventDefault();
             
-            const formData = new FormData();
+            const formData = new URLSearchParams();
             formData.append('enabled', document.getElementById('mqttEnable').value);
             formData.append('broker', document.getElementById('mqttBrokerAddr').value);
             formData.append('port', document.getElementById('mqttPort').value);
@@ -619,6 +639,9 @@
             
             fetch('/api/mqtt', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
                 body: formData
             })
             .then(r => r.json())
@@ -663,12 +686,15 @@
         document.getElementById('buzzerForm').onsubmit = function(e) {
             e.preventDefault();
             
-            const formData = new FormData();
+            const formData = new URLSearchParams();
             formData.append('enabled', document.getElementById('buzzerEnable').value);
             formData.append('threshold', document.getElementById('buzzerThresholdInput').value);
             
             fetch('/api/buzzer', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
                 body: formData
             })
             .then(r => r.json())
