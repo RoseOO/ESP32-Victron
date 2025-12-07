@@ -121,7 +121,7 @@
 ### Typography
 - Clear hierarchy with color-coded text
 - Monospace font for MAC addresses
-- Icons for visual clarity (emojis)
+- Icons for visual clarity
 
 ---
 

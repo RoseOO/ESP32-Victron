@@ -34,7 +34,7 @@ When you first access the web interface, you see:
 │   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Note: Add your Victron devices with their │
+│  Note: Note: Add your Victron devices with their │
 │  BLE MAC addresses. If your device uses       │
 │  encryption, enter the 32-character           │
 │  encryption key from the VictronConnect app.  │
@@ -62,7 +62,7 @@ When you first access the web interface, you see:
 │   WiFi Configuration                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Current Mode: Access Point                │
+│  Note: Current Mode: Access Point                │
 │     IP Address: 192.168.4.1                   │
 │                                               │
 │  [ Configure WiFi]                           │
@@ -124,7 +124,7 @@ When clicking "Configure WiFi", you see:
 ║  └─────────────────────────────────────┘   ║
 ║  Minimum 8 characters                      ║
 ║                                             ║
-║  ️ Warning: Changing WiFi settings         ║
+║  Warning: Changing WiFi settings         ║
 ║  requires a restart to take effect.        ║
 ║                                             ║
 ║         [Cancel]  [Save & Restart]          ║
@@ -155,7 +155,7 @@ For Station mode, the form changes to show:
 ║  │ •••••••                             │   ║
 ║  └─────────────────────────────────────┘   ║
 ║                                             ║
-║  ️ Warning: Changing WiFi settings         ║
+║  Warning: Changing WiFi settings         ║
 ║  requires a restart to take effect.        ║
 ║                                             ║
 ║         [Cancel]  [Save & Restart]          ║
@@ -172,7 +172,7 @@ When no devices are configured:
 │   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Note: Add your Victron devices...         │
+│  Note: Note: Add your Victron devices...         │
 │                                               │
 │  ┌─────────────────────────────────────────┐ │
 │  │                                         │ │
