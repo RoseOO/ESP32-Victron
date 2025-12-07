@@ -524,7 +524,7 @@ bool VictronBLE::validateVoltage(float voltage, const char* source, VictronDevic
 }
 
 // Validate temperature reading with sanity check
-// Returns true if temperature is valid (not exceeding MAX_VALID_TEMPERATURE), false if invalid
+// Returns true if temperature is valid (between valid range and not exceeding MAX_VALID_TEMPERATURE), false if invalid
 // If invalid, sets device.dataValid to false and logs an error
 bool VictronBLE::validateTemperature(float temperature, const char* source, VictronDeviceData& device) {
     // Sanity check: discard packet if temperature > MAX_VALID_TEMPERATURE (clearly incorrect data)
