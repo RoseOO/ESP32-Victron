@@ -378,19 +378,41 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
         return false;
     }
     
-    // Convert hex string key to 16-byte array
+    // Convert hex string key to 16-byte array with validation
+    // Using direct character access for efficiency (no String allocations)
     uint8_t keyBytes[16];
     for (int i = 0; i < 16; i++) {
-        String byteStr = key.substring(i * 2, i * 2 + 2);
-        // Validate that both characters are valid hex digits
-        for (int j = 0; j < 2; j++) {
-            char c = byteStr.charAt(j);
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-                Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", c, i * 2 + j);
-                return false;
-            }
+        char highNibble = key.charAt(i * 2);
+        char lowNibble = key.charAt(i * 2 + 1);
+        
+        // Validate and convert high nibble
+        uint8_t highVal;
+        if (highNibble >= '0' && highNibble <= '9') {
+            highVal = highNibble - '0';
+        } else if (highNibble >= 'a' && highNibble <= 'f') {
+            highVal = 10 + (highNibble - 'a');
+        } else if (highNibble >= 'A' && highNibble <= 'F') {
+            highVal = 10 + (highNibble - 'A');
+        } else {
+            Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", highNibble, i * 2);
+            return false;
         }
-        keyBytes[i] = (uint8_t)strtol(byteStr.c_str(), NULL, 16);
+        
+        // Validate and convert low nibble
+        uint8_t lowVal;
+        if (lowNibble >= '0' && lowNibble <= '9') {
+            lowVal = lowNibble - '0';
+        } else if (lowNibble >= 'a' && lowNibble <= 'f') {
+            lowVal = 10 + (lowNibble - 'a');
+        } else if (lowNibble >= 'A' && lowNibble <= 'F') {
+            lowVal = 10 + (lowNibble - 'A');
+        } else {
+            Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", lowNibble, i * 2 + 1);
+            return false;
+        }
+        
+        // Combine nibbles into byte
+        keyBytes[i] = (highVal << 4) | lowVal;
     }
     
     // Verify the encryption key match byte (byte 7 should match keyBytes[0])
