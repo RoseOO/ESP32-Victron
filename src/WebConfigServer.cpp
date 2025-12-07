@@ -152,6 +152,14 @@ void WebConfigServer::startServer() {
         handleSetMQTTConfig(request);
     });
     
+    server->on("/api/buzzer", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetBuzzerConfig(request);
+    });
+    
+    server->on("/api/buzzer", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        handleSetBuzzerConfig(request);
+    });
+    
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
     });
@@ -576,4 +584,47 @@ bool WebConfigServer::isWiFiConnected() {
 
 bool WebConfigServer::isAPMode() {
     return wifiConfig.apMode;
+}
+
+// External declarations for buzzer configuration (defined in main.cpp)
+extern bool buzzerEnabled;
+extern float buzzerThreshold;
+extern void saveBuzzerConfig();
+
+void WebConfigServer::handleGetBuzzerConfig(AsyncWebServerRequest *request) {
+    String json = "{";
+    json += "\"enabled\":" + String(buzzerEnabled ? "true" : "false") + ",";
+    json += "\"threshold\":" + String(buzzerThreshold, 1);
+    json += "}";
+    
+    request->send(200, "application/json", json);
+}
+
+void WebConfigServer::handleSetBuzzerConfig(AsyncWebServerRequest *request) {
+    if (!request->hasParam("enabled", true)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing enabled parameter\"}");
+        return;
+    }
+    
+    if (!request->hasParam("threshold", true)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing threshold parameter\"}");
+        return;
+    }
+    
+    String enabledStr = request->getParam("enabled", true)->value();
+    String thresholdStr = request->getParam("threshold", true)->value();
+    
+    buzzerEnabled = (enabledStr == "true");
+    buzzerThreshold = thresholdStr.toFloat();
+    
+    // Validate threshold
+    if (buzzerThreshold < 0 || buzzerThreshold > 100) {
+        buzzerThreshold = 10.0;  // Reset to default
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Threshold must be between 0 and 100\"}");
+        return;
+    }
+    
+    saveBuzzerConfig();
+    
+    request->send(200, "application/json", "{\"success\":true}");
 }

@@ -1,6 +1,7 @@
 #include <M5StickCPlus2.h>
 #include <Arduino.h>
 #include <vector>
+#include <Preferences.h>
 #include "NoDebug.h"
 
 // Add the project headers that define the classes/types used below.
@@ -26,9 +27,70 @@ const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
 
+// Buzzer alarm configuration
+Preferences buzzerPreferences;
+bool buzzerEnabled = true;
+float buzzerThreshold = 10.0;  // Default 10% battery SOC
+bool buzzerAlarmActive = false;
+unsigned long lastBuzzerCheck = 0;
+const unsigned long BUZZER_CHECK_INTERVAL = 5000;  // Check every 5 seconds
+
 // Forward declarations
 void updateDeviceList();
 void drawDisplay();
+void loadBuzzerConfig();
+void saveBuzzerConfig();
+void checkBatteryAlarm();
+
+void loadBuzzerConfig() {
+    buzzerPreferences.begin("buzzer", true);  // read-only
+    buzzerEnabled = buzzerPreferences.getBool("enabled", true);
+    buzzerThreshold = buzzerPreferences.getFloat("threshold", 10.0);
+    buzzerPreferences.end();
+    Serial.printf("Buzzer config loaded: enabled=%d, threshold=%.1f%%\n", buzzerEnabled, buzzerThreshold);
+}
+
+void saveBuzzerConfig() {
+    buzzerPreferences.begin("buzzer", false);  // read-write
+    buzzerPreferences.putBool("enabled", buzzerEnabled);
+    buzzerPreferences.putFloat("threshold", buzzerThreshold);
+    buzzerPreferences.end();
+    Serial.printf("Buzzer config saved: enabled=%d, threshold=%.1f%%\n", buzzerEnabled, buzzerThreshold);
+}
+
+void checkBatteryAlarm() {
+    if (!buzzerEnabled) {
+        buzzerAlarmActive = false;
+        return;
+    }
+    
+    // Check all devices with battery SOC data
+    bool alarmCondition = false;
+    for (const auto& addr : deviceAddresses) {
+        VictronDeviceData* device = victron->getDevice(addr);
+        if (device && device->hasSOC && device->dataValid) {
+            if (device->batterySOC <= buzzerThreshold && device->batterySOC >= 0) {
+                alarmCondition = true;
+                Serial.printf("Battery alarm triggered: %s at %.1f%% (threshold: %.1f%%)\n", 
+                    device->name.c_str(), device->batterySOC, buzzerThreshold);
+                break;
+            }
+        }
+    }
+    
+    // Trigger alarm if condition met and not already active
+    if (alarmCondition && !buzzerAlarmActive) {
+        buzzerAlarmActive = true;
+        // Beep pattern: 3 short beeps
+        for (int i = 0; i < 3; i++) {
+            M5.Speaker.tone(2000, 200);  // 2kHz tone for 200ms
+            delay(300);
+        }
+        Serial.println("Battery alarm beep triggered");
+    } else if (!alarmCondition) {
+        buzzerAlarmActive = false;
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -38,6 +100,10 @@ void setup() {
     Serial.println("STARTUP: calling M5.begin()");
     M5.begin();
     Serial.println("STARTUP: M5.begin() returned");
+    
+    // Load buzzer configuration
+    Serial.println("STARTUP: loading buzzer config");
+    loadBuzzerConfig();
 
     // instantiate objects (no heavy init in constructors)
     Serial.println("STARTUP: new VictronBLE/WebConfigServer/MQTTPublisher");
@@ -334,8 +400,16 @@ void loop() {
     M5.update();
     unsigned long currentTime = millis();
     
-    // Button A: Switch to next device or toggle config display
-    if (M5.BtnA.wasPressed() && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+    // Long press button A: toggle web config display (check this first to prevent short press from firing)
+    if (M5.BtnA.wasReleasefor(1000)) {
+        if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
+            lastButtonPressTime = currentTime;
+            webConfigMode = !webConfigMode;
+            drawDisplay();
+        }
+    }
+    // Button A: Switch to next device or go back from config mode
+    else if (M5.BtnA.wasPressed() && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
         lastButtonPressTime = currentTime;
         
         if (deviceAddresses.empty()) {
@@ -351,13 +425,6 @@ void loop() {
             webConfigMode = false;
             drawDisplay();
         }
-    }
-    
-    // Long press button A: toggle web config display
-    if (M5.BtnA.pressedFor(1000) && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
-        lastButtonPressTime = currentTime;
-        webConfigMode = !webConfigMode;
-        drawDisplay();
     }
     
     // Periodic BLE scan (only in normal mode)
@@ -380,6 +447,12 @@ void loop() {
             drawDisplay();
         }
         lastDisplayUpdate = currentTime;
+    }
+    
+    // Check battery alarm periodically
+    if (currentTime - lastBuzzerCheck > BUZZER_CHECK_INTERVAL) {
+        checkBatteryAlarm();
+        lastBuzzerCheck = currentTime;
     }
     
     // Handle MQTT publishing
