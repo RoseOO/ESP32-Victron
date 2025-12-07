@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-12-06
+
+### Fixed
+- **Critical: Boot Loop Issue**: Fixed continuous boot loop (SW_RESET) caused by web interface
+  - Moved large HTML strings (~34 KB) from RAM to LittleFS filesystem in flash storage
+  - Extracted `index.html` (25 KB) and `monitor.html` (9 KB) to `data/` directory
+  - Updated `WebConfigServer` to serve files from filesystem instead of PROGMEM
+  - Reduced `WebConfigServer.cpp` from 1381 to 567 lines (-814 lines, -59%)
+  - Added proper error handling for filesystem mount failures
+  - Added helpful error messages with upload instructions
+  - This fix prevents memory exhaustion during initialization
+
+### Added
+- **LittleFS Filesystem Support**: Web interface files now stored in flash
+  - Added `board_build.filesystem = littlefs` to `platformio.ini`
+  - Created `data/` directory with web interface HTML files
+  - Filesystem must be uploaded separately: `pio run --target uploadfs`
+- **Documentation**: Comprehensive guides for filesystem usage
+  - `docs/FILESYSTEM_UPLOAD.md` - Complete filesystem upload guide
+  - `docs/BOOT_LOOP_FIX.md` - Technical analysis of the boot loop fix
+  - `data/README.md` - Documentation for data directory
+  - Updated `README.md` and `QUICKSTART.md` with filesystem upload instructions
+
+### Changed
+- **Memory Usage**: Significantly reduced RAM usage during initialization
+  - HTML files no longer consume RAM (stored in flash instead)
+  - Freed up ~34 KB of RAM for other allocations
+  - Improved boot stability and reliability
+- **Web Interface**: Now requires filesystem upload as separate step
+  - Must run `pio run --target uploadfs` after firmware upload
+  - Error pages provide clear instructions if filesystem not uploaded
+
+### Technical Details
+- RAM usage during setup reduced from ~199 KB to ~165 KB
+- Firmware size reduced by ~34 KB
+- Web interface can now be updated without recompiling firmware
+- Better separation of concerns: web assets separate from application code
+
 ## [1.3.0] - 2025-12-06
 
 ### Changed

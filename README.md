@@ -9,6 +9,7 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 ## 📚 Documentation
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
+- **[Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)** - Upload web interface files to ESP32 flash
 - **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
 - **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
@@ -105,15 +106,22 @@ This project decodes Victron's BLE advertisement packets which contain:
 
 2. Open the project in PlatformIO (VS Code with PlatformIO extension recommended)
 
-3. Build and upload to your M5StickC PLUS2:
+3. Build and upload firmware to your M5StickC PLUS2:
    ```bash
    pio run --target upload
    ```
 
-4. Monitor serial output (optional):
+4. Upload web interface files to filesystem (required for web interface):
+   ```bash
+   pio run --target uploadfs
+   ```
+
+5. Monitor serial output (optional):
    ```bash
    pio device monitor
    ```
+
+> **Note:** Both firmware and filesystem uploads are required. The filesystem contains the web interface HTML files. See [Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md) for details.
 
 ## Usage
 

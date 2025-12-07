@@ -56,12 +56,28 @@ Pick one:
 1. Open the project folder in VS Code
 2. PlatformIO will automatically detect configuration
 
-### Step 4: Upload (2 minutes)
+### Step 4: Upload Firmware & Filesystem (3 minutes)
 
+#### For PlatformIO (Recommended):
 1. Connect M5StickC PLUS2 via USB-C cable
 2. Press power button on M5StickC to turn it on
-3. Click **Upload** button
-4. Wait for "Upload complete" message
+3. Upload firmware:
+   ```bash
+   pio run --target upload
+   ```
+4. Upload web interface files (required):
+   ```bash
+   pio run --target uploadfs
+   ```
+5. Wait for both uploads to complete
+
+#### For Arduino IDE:
+1. Connect M5StickC PLUS2 via USB-C cable
+2. Press power button on M5StickC to turn it on
+3. Click **Upload** button for firmware
+4. For filesystem upload, see [Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)
+
+> **Important**: Both firmware and filesystem uploads are required. The filesystem contains the web interface HTML files.
 
 > **Troubleshooting**: If upload fails, try holding the M5 button while connecting USB
 
