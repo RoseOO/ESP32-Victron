@@ -107,6 +107,14 @@ void WebConfigServer::startServer() {
     
     server = new AsyncWebServer(80);
     
+    // Note: For POST endpoints with application/x-www-form-urlencoded content,
+    // we do NOT use a body handler. ESPAsyncWebServer's automatic form parser
+    // works best without a custom body handler. The library will automatically
+    // parse form data and make parameters available via request->getParam("name", true).
+    //
+    // If a custom body handler is needed for raw JSON or other content types,
+    // it should be added per-endpoint, not as a shared handler.
+    
     // Serve main page
     server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleRoot(request);
@@ -334,36 +342,24 @@ void WebConfigServer::handleUpdateDevice(AsyncWebServerRequest *request) {
 void WebConfigServer::handleDeleteDevice(AsyncWebServerRequest *request) {
     String address = "";
     
-    // Debug logging
-    Serial.printf("DELETE request - params: %d\n", request->params());
-    for(int i = 0; i < request->params(); i++) {
-        AsyncWebParameter* p = request->getParam(i);
-        Serial.printf("  Param[%d]: %s = %s (POST=%d)\n", i, p->name().c_str(), p->value().c_str(), p->isPost());
-    }
-    
     // Try multiple methods to get the address parameter
     // Method 1: POST body parameter (standard approach)
     if (request->hasParam("address", true)) {
         address = request->getParam("address", true)->value();
-        Serial.println("Found address in POST body");
     } 
     // Method 2: Check all parameters (POST or GET)
     else if (request->hasParam("address")) {
         address = request->getParam("address")->value();
-        Serial.println("Found address in any parameter");
     }
-    // Method 3: URL query parameter
+    // Method 3: URL query parameter (fallback)
     else if (request->hasParam("address", false)) {
         address = request->getParam("address", false)->value();
-        Serial.println("Found address in query string");
     }
     
     if (!address.isEmpty()) {
-        Serial.printf("Deleting device: %s\n", address.c_str());
         removeDeviceConfig(address);
         request->send(200, "application/json", "{\"success\":true}");
     } else {
-        Serial.println("DELETE device failed - no address parameter found");
         request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
     }
 }
