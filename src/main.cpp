@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <vector>
 #include <Preferences.h>
+#include <ArduinoOTA.h>
 #include "NoDebug.h"
 
 // Add the project headers that define the classes/types used below.
@@ -19,6 +20,7 @@ std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
+unsigned long lastDeviceSwitch = 0;  // Track when device was last switched
 unsigned long lastButtonPressTime = 0;  // For debouncing
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
@@ -45,6 +47,12 @@ bool longPressHandled = false;  // For button long press detection
 Preferences dataPreferences;
 bool retainLastData = true;  // Default to retaining last good data
 
+// LCD display configuration
+Preferences lcdPreferences;
+int lcdFontSize = 1;  // Default font size (1x)
+int lcdScrollRate = 5;  // Default scroll rate in seconds
+String lcdOrientation = "landscape";  // Default orientation
+
 // Forward declarations
 void updateDeviceList();
 void drawDisplay();
@@ -52,6 +60,8 @@ void loadBuzzerConfig();
 void saveBuzzerConfig();
 void loadDataRetentionConfig();
 void saveDataRetentionConfig();
+void loadLCDConfig();
+void saveLCDConfig();
 void checkBatteryAlarm();
 void handleBuzzerBeep();
 
@@ -83,6 +93,24 @@ void saveDataRetentionConfig() {
     dataPreferences.putBool("retainLast", retainLastData);
     dataPreferences.end();
     Serial.printf("Data retention config saved: retainLastData=%d\n", retainLastData);
+}
+
+void loadLCDConfig() {
+    lcdPreferences.begin("victron-lcd", true);  // read-only
+    lcdFontSize = lcdPreferences.getInt("fontSize", 1);
+    lcdScrollRate = lcdPreferences.getInt("scrollRate", 5);
+    lcdOrientation = lcdPreferences.getString("orientation", "landscape");
+    lcdPreferences.end();
+    Serial.printf("LCD config loaded: fontSize=%d, scrollRate=%d, orientation=%s\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str());
+}
+
+void saveLCDConfig() {
+    lcdPreferences.begin("victron-lcd", false);  // read-write
+    lcdPreferences.putInt("fontSize", lcdFontSize);
+    lcdPreferences.putInt("scrollRate", lcdScrollRate);
+    lcdPreferences.putString("orientation", lcdOrientation);
+    lcdPreferences.end();
+    Serial.printf("LCD config saved: fontSize=%d, scrollRate=%d, orientation=%s\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str());
 }
 
 void checkBatteryAlarm() {
@@ -152,6 +180,10 @@ void setup() {
     // Load data retention configuration
     Serial.println("STARTUP: loading data retention config");
     loadDataRetentionConfig();
+    
+    // Load LCD display configuration
+    Serial.println("STARTUP: loading LCD config");
+    loadLCDConfig();
 
     // instantiate objects (no heavy init in constructors)
     Serial.println("STARTUP: new VictronBLE/WebConfigServer/MQTTPublisher");
@@ -161,7 +193,11 @@ void setup() {
     Serial.println("STARTUP: allocations done");
 
     // Basic display sanity test
-    M5.Lcd.setRotation(1);
+    if (lcdOrientation == "portrait") {
+        M5.Lcd.setRotation(0);  // Portrait mode
+    } else {
+        M5.Lcd.setRotation(1);  // Landscape mode (default)
+    }
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(WHITE, BLACK);
@@ -195,6 +231,88 @@ void setup() {
     webServer->begin();
     Serial.println("STARTUP: webServer->begin() returned");
 
+    // Initialize ArduinoOTA for over-the-air firmware updates
+    Serial.println("STARTUP: initializing ArduinoOTA");
+    ArduinoOTA.setHostname("ESP32-Victron");
+    // NOTE: Default password is "victron123" for ease of use. 
+    // For production deployments, consider changing this to a unique password per device.
+    ArduinoOTA.setPassword("victron123");  // Set OTA password for security
+    
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH) {
+            type = "sketch";
+        } else {  // U_SPIFFS
+            type = "filesystem";
+        }
+        Serial.println("OTA: Start updating " + type);
+        // Display OTA progress on screen
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(2);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.setCursor(10, 10);
+        M5.Lcd.println("OTA Update");
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setCursor(10, 40);
+        M5.Lcd.println("Starting...");
+    });
+    
+    ArduinoOTA.onEnd([]() {
+        Serial.println("\nOTA: Update complete");
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.println("Update Complete!");
+        M5.Lcd.setCursor(10, 85);
+        M5.Lcd.println("Rebooting...");
+    });
+    
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        unsigned int percent = (total > 0) ? (progress * 100) / total : 0;
+        Serial.printf("OTA Progress: %u%%\r", percent);
+        // Update progress bar on screen
+        M5.Lcd.fillRect(10, 55, 220, 10, BLACK);
+        M5.Lcd.drawRect(10, 55, 220, 10, WHITE);
+        M5.Lcd.fillRect(11, 56, (percent * 218) / 100, 8, GREEN);
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.printf("Progress: %u%%  ", percent);
+    });
+    
+    ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("OTA Error[%u]: ", error);
+        M5.Lcd.fillRect(0, 70, 240, 60, BLACK);
+        M5.Lcd.setCursor(10, 70);
+        M5.Lcd.setTextColor(RED, BLACK);
+        M5.Lcd.println("Update Failed!");
+        M5.Lcd.setCursor(10, 85);
+        if (error == OTA_AUTH_ERROR) {
+            Serial.println("Auth Failed");
+            M5.Lcd.println("Auth Failed");
+        } else if (error == OTA_BEGIN_ERROR) {
+            Serial.println("Begin Failed");
+            M5.Lcd.println("Begin Failed");
+        } else if (error == OTA_CONNECT_ERROR) {
+            Serial.println("Connect Failed");
+            M5.Lcd.println("Connect Failed");
+        } else if (error == OTA_RECEIVE_ERROR) {
+            Serial.println("Receive Failed");
+            M5.Lcd.println("Receive Failed");
+        } else if (error == OTA_END_ERROR) {
+            Serial.println("End Failed");
+            M5.Lcd.println("End Failed");
+        }
+    });
+    
+    ArduinoOTA.begin();
+    Serial.println("STARTUP: ArduinoOTA initialized");
+    Serial.println("OTA: Ready for updates");
+    Serial.print("OTA: Hostname: ESP32-Victron, IP: ");
+    if (webServer->isAPMode()) {
+        Serial.println(WiFi.softAPIP());
+    } else {
+        Serial.println(WiFi.localIP());
+    }
+
     Serial.println("STARTUP: doing a short scan to populate devices");
     victron->scan(2);            // short scan
     updateDeviceList();
@@ -211,8 +329,23 @@ void setup() {
 void updateDeviceList() {
     deviceAddresses.clear();
     auto& devices = victron->getDevices();
+    
+    // Get configured devices from webServer
+    auto& configuredDevices = webServer->getDeviceConfigs();
+    
+    // Only add devices that are configured and enabled
     for (auto& pair : devices) {
-        deviceAddresses.push_back(pair.first);
+        bool isConfigured = false;
+        for (const auto& config : configuredDevices) {
+            if (config.address.equalsIgnoreCase(pair.first) && config.enabled) {
+                isConfigured = true;
+                break;
+            }
+        }
+        
+        if (isConfigured) {
+            deviceAddresses.push_back(pair.first);
+        }
     }
     
     if (currentDeviceIndex >= deviceAddresses.size()) {
@@ -270,20 +403,28 @@ void drawDisplay() {
     
     M5.Lcd.fillScreen(BLACK);
     
+    // Calculate layout constants based on font size and orientation
+    const int LCD_LANDSCAPE_MAX_CHARS = 26;
+    const int valueColumnX = 80 * lcdFontSize;
+    const int lineSpacing = 15 * lcdFontSize;
+    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
+    const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
+    const int maxChars = (lcdOrientation == "portrait") ? 10 : (LCD_LANDSCAPE_MAX_CHARS / lcdFontSize);
+    
     // Device name header
-    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextSize(lcdFontSize);
     M5.Lcd.setTextColor(CYAN, BLACK);
     M5.Lcd.setCursor(0, 0);
     
     String deviceName = device->name;
-    if (deviceName.length() > 26) {
-        deviceName = deviceName.substring(0, 23) + "...";
+    if (deviceName.length() > maxChars) {
+        deviceName = deviceName.substring(0, maxChars - 3) + "...";
     }
     M5.Lcd.println(deviceName);
     
     // Device type indicator
     M5.Lcd.setTextColor(YELLOW, BLACK);
-    M5.Lcd.setCursor(0, 12);
+    M5.Lcd.setCursor(0, 12 * lcdFontSize);
     switch (device->type) {
         case DEVICE_SMART_SHUNT:
             M5.Lcd.print("Smart Shunt");
@@ -307,41 +448,42 @@ void drawDisplay() {
     
     // Device counter
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(220, 12);
+    int counterX = (lcdOrientation == "portrait") ? 100 : 220;
+    M5.Lcd.setCursor(counterX, 12 * lcdFontSize);
     M5.Lcd.printf("%d/%d", currentDeviceIndex + 1, deviceAddresses.size());
     
     // Draw separator line
-    M5.Lcd.drawLine(0, 24, 240, 24, DARKGREY);
+    M5.Lcd.drawLine(0, 24 * lcdFontSize, screenWidth, 24 * lcdFontSize, DARKGREY);
     
     // Main data display
-    M5.Lcd.setTextSize(1);
-    int y = 30;
+    M5.Lcd.setTextSize(lcdFontSize);
+    int y = 30 * lcdFontSize;
     
     // Voltage
     M5.Lcd.setTextColor(GREEN, BLACK);
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("Voltage:");
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(80, y);
+    M5.Lcd.setCursor(valueColumnX, y);
     if (device->dataValid) {
         M5.Lcd.printf("%.2f V", device->voltage);
     } else {
         M5.Lcd.print("-- V");
     }
-    y += 15;
+    y += lineSpacing;
     
     // Current
     M5.Lcd.setTextColor(GREEN, BLACK);
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("Current:");
     M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(80, y);
+    M5.Lcd.setCursor(valueColumnX, y);
     if (device->dataValid) {
         M5.Lcd.printf("%.2f A", device->current);
     } else {
         M5.Lcd.print("-- A");
     }
-    y += 15;
+    y += lineSpacing;
     
     // Power
     if (device->hasPower) {
@@ -349,9 +491,9 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Power:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f W", device->power);
-        y += 15;
+        y += lineSpacing;
     }
     
     // Battery SOC (State of Charge) - for Smart Shunt
@@ -360,7 +502,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Battery:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         uint16_t color = WHITE;
         if (device->batterySOC <= 20) {
             color = RED;
@@ -372,7 +514,7 @@ void drawDisplay() {
         M5.Lcd.setTextColor(color, BLACK);
         M5.Lcd.printf("%.1f %%", device->batterySOC);
         M5.Lcd.setTextColor(WHITE, BLACK);
-        y += 15;
+        y += lineSpacing;
     }
     
     // Temperature
@@ -381,9 +523,9 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Temp:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f C", device->temperature);
-        y += 15;
+        y += lineSpacing;
     }
     
     // Inverter AC Output
@@ -392,18 +534,18 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("AC Out:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.1f V", device->acOutVoltage);
-        y += 15;
+        y += lineSpacing;
         
         if (device->acOutCurrent != 0 || device->acOutPower != 0) {
             M5.Lcd.setTextColor(GREEN, BLACK);
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("AC Pwr:");
             M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(80, y);
+            M5.Lcd.setCursor(valueColumnX, y);
             M5.Lcd.printf("%.0f W", device->acOutPower);
-            y += 15;
+            y += lineSpacing;
         }
     }
     
@@ -413,9 +555,9 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("In:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.2f V", device->inputVoltage);
-        y += 15;
+        y += lineSpacing;
     }
     
     if (device->hasOutputVoltage) {
@@ -423,20 +565,20 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Out:");
         M5.Lcd.setTextColor(WHITE, BLACK);
-        M5.Lcd.setCursor(80, y);
+        M5.Lcd.setCursor(valueColumnX, y);
         M5.Lcd.printf("%.2f V", device->outputVoltage);
-        y += 15;
+        y += lineSpacing;
     }
     
     // Draw bottom instructions
-    M5.Lcd.drawLine(0, 110, 240, 110, DARKGREY);
+    M5.Lcd.drawLine(0, bottomY, screenWidth, bottomY, DARKGREY);
     M5.Lcd.setTextSize(1);
     M5.Lcd.setTextColor(DARKGREY, BLACK);
-    M5.Lcd.setCursor(5, 118);
+    M5.Lcd.setCursor(5, bottomY + 8);
     M5.Lcd.print("M5: Next Device");
     
     // Signal strength indicator
-    M5.Lcd.setCursor(180, 118);
+    M5.Lcd.setCursor((lcdOrientation == "portrait") ? 80 : 180, bottomY + 8);
     if (device->rssi > -60) {
         M5.Lcd.setTextColor(GREEN, BLACK);
     } else if (device->rssi > -80) {
@@ -450,6 +592,9 @@ void drawDisplay() {
 void loop() {
     M5.update();
     unsigned long currentTime = millis();
+    
+    // Handle ArduinoOTA updates
+    ArduinoOTA.handle();
     
     // Long press button A: toggle web config display (check this first to prevent short press from firing)
     if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {
@@ -477,6 +622,7 @@ void loop() {
         } else if (!webConfigMode) {
             // Normal mode: cycle through devices
             currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
+            lastDeviceSwitch = currentTime;  // Reset auto-scroll timer when manually switching
             drawDisplay();
         } else {
             // Config mode: go back to normal mode
@@ -502,6 +648,11 @@ void loop() {
     // Update display periodically (only in normal mode with devices)
     if (!webConfigMode && currentTime - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
         if (!deviceAddresses.empty()) {
+            // Auto-scroll between devices based on scrollRate setting
+            if (deviceAddresses.size() > 1 && currentTime - lastDeviceSwitch > (lcdScrollRate * 1000)) {
+                currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
+                lastDeviceSwitch = currentTime;
+            }
             drawDisplay();
         }
         lastDisplayUpdate = currentTime;

@@ -240,6 +240,18 @@
                     Configure Alarm
                 </button>
             </div>
+            
+            <div class="section">
+                <h2>LCD Display Settings</h2>
+                <div id="lcdStatus" class="info-box">
+                    <strong>Font Size:</strong> <span id="lcdFontSize">Loading...</span><br>
+                    <strong>Scroll Rate:</strong> <span id="lcdScrollRate">Loading...</span><br>
+                    <strong>Orientation:</strong> <span id="lcdOrientation">Loading...</span>
+                </div>
+                <button class="btn-primary" onclick="openLCDModal()">
+                    Configure Display
+                </button>
+            </div>
         </div>
     </div>
 
@@ -404,6 +416,46 @@
         </div>
     </div>
 
+    <!-- LCD Display Configuration Modal -->
+    <div id="lcdModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>LCD Display Configuration</h3>
+            </div>
+            <form id="lcdForm">
+                <div class="form-group">
+                    <label>Font Size</label>
+                    <select id="lcdFontSize">
+                        <option value="1">Small (1x)</option>
+                        <option value="2">Medium (2x)</option>
+                        <option value="3">Large (3x)</option>
+                    </select>
+                    <small>Size of text on the LCD display</small>
+                </div>
+                <div class="form-group">
+                    <label>Page Scroll Rate (seconds)</label>
+                    <input type="number" id="lcdScrollRate" placeholder="5" value="5" min="1" max="60">
+                    <small>Time to display each device before scrolling to next</small>
+                </div>
+                <div class="form-group">
+                    <label>Display Orientation</label>
+                    <select id="lcdOrientation">
+                        <option value="landscape">Landscape (default)</option>
+                        <option value="portrait">Portrait</option>
+                    </select>
+                    <small>Screen orientation mode</small>
+                </div>
+                <div class="info-box">
+                    <strong>Info:</strong> These settings control how device information is displayed on the M5StickC PLUS2 LCD screen.
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeLCDModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         let editingAddress = null;
 
@@ -413,6 +465,7 @@
             loadWiFiStatus();
             loadMQTTStatus();
             loadBuzzerStatus();
+            loadLCDStatus();
         };
 
         function loadDevices() {
@@ -669,6 +722,22 @@
                 });
         }
 
+        function loadLCDStatus() {
+            fetch('/api/lcd')
+                .then(r => r.json())
+                .then(lcd => {
+                    const fontSizeText = ['Small (1x)', 'Medium (2x)', 'Large (3x)'];
+                    document.getElementById('lcdFontSize').textContent = fontSizeText[(lcd.fontSize || 1) - 1] || 'Small (1x)';
+                    document.getElementById('lcdScrollRate').textContent = (lcd.scrollRate || 5) + ' seconds';
+                    document.getElementById('lcdOrientation').textContent = lcd.orientation === 'portrait' ? 'Portrait' : 'Landscape';
+                })
+                .catch(err => {
+                    document.getElementById('lcdFontSize').textContent = 'Error loading';
+                    document.getElementById('lcdScrollRate').textContent = 'Error loading';
+                    document.getElementById('lcdOrientation').textContent = 'Error loading';
+                });
+        }
+
         function openBuzzerModal() {
             fetch('/api/buzzer')
                 .then(r => r.json())
@@ -681,6 +750,21 @@
 
         function closeBuzzerModal() {
             document.getElementById('buzzerModal').classList.remove('active');
+        }
+
+        function openLCDModal() {
+            fetch('/api/lcd')
+                .then(r => r.json())
+                .then(lcd => {
+                    document.getElementById('lcdFontSize').value = lcd.fontSize || 1;
+                    document.getElementById('lcdScrollRate').value = lcd.scrollRate || 5;
+                    document.getElementById('lcdOrientation').value = lcd.orientation || 'landscape';
+                    document.getElementById('lcdModal').classList.add('active');
+                });
+        }
+
+        function closeLCDModal() {
+            document.getElementById('lcdModal').classList.remove('active');
         }
 
         document.getElementById('buzzerForm').onsubmit = function(e) {
@@ -703,6 +787,33 @@
                     closeBuzzerModal();
                     loadBuzzerStatus();
                     alert('Buzzer settings saved successfully!');
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        };
+
+        document.getElementById('lcdForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const formData = new URLSearchParams();
+            formData.append('fontSize', document.getElementById('lcdFontSize').value);
+            formData.append('scrollRate', document.getElementById('lcdScrollRate').value);
+            formData.append('orientation', document.getElementById('lcdOrientation').value);
+            
+            fetch('/api/lcd', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    closeLCDModal();
+                    loadLCDStatus();
+                    alert('LCD settings saved successfully!');
                 } else {
                     alert('Error: ' + result.error);
                 }
