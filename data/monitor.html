@@ -340,14 +340,8 @@
                             }
                             
                             if (d.type === 5 && d.offReason !== undefined && d.offReason !== 0) {
-                                let reasons = [];
-                                if (d.offReason & 0x01) reasons.push("No input");
-                                if (d.offReason & 0x02) reasons.push("Switch off");
-                                if (d.offReason & 0x04) reasons.push("Register off");
-                                if (d.offReason & 0x08) reasons.push("Remote");
-                                if (d.offReason & 0x10) reasons.push("Protection");
-                                if (d.offReason & 0x40) reasons.push("BMS");
-                                const reasonStr = reasons.join(", ") || `0x${d.offReason.toString(16)}`;
+                                // Use the offReasonText from the backend if available, otherwise fallback to hex
+                                const reasonStr = d.offReasonText || `0x${d.offReason.toString(16)}`;
                                 dataRows += `<div class="data-row"><span class="data-label">Off Reason:</span><span class="data-value">${reasonStr}</span></div>`;
                             }
                             

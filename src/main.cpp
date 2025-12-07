@@ -37,6 +37,7 @@ const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
 bool largeDisplayMode = false;  // Toggle for large display mode (voltage, current, SOC only)
+bool largeDisplayJustEntered = false;  // Track when we just entered large display mode to reset cache
 int verticalScrollOffset = 0;  // Current vertical scroll position (0-based index of first visible item)
 
 // Button double-press detection
@@ -854,13 +855,62 @@ void drawDisplay() {
                 M5.Lcd.print("Off:");
                 
                 if (deviceChanged) {
-                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
+                    
+                    // Calculate available width for text (right-aligned)
+                    const int availableWidth = screenWidth - valueColumnX - 5;  // 5 pixels margin
+                    const int charsPerLine = availableWidth / 6;  // Approx 6 pixels per char at font size 1
+                    
+                    // Clear the entire area for wrapped text (up to 3 lines)
+                    const int maxLines = 3;
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * maxLines + (maxLines - 1) * 2, BLACK);
+                    
                     M5.Lcd.setTextSize(1);  // Use small font for reason text
                     M5.Lcd.setTextColor(YELLOW, BLACK);
-                    M5.Lcd.setCursor(valueColumnX, y);
-                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
-                    if (reasonStr.length() > 12) reasonStr = reasonStr.substring(0, 12);
-                    M5.Lcd.print(reasonStr);
+                    
+                    // Wrap text across multiple lines, keeping right-aligned
+                    int currentLine = 0;
+                    int startPos = 0;
+                    while (startPos < reasonStr.length() && currentLine < maxLines) {
+                        String line;
+                        
+                        // Extract substring for this line
+                        if (startPos + charsPerLine >= reasonStr.length()) {
+                            // Last line - take remaining text
+                            line = reasonStr.substring(startPos);
+                        } else {
+                            // Try to break at a word boundary (space or semicolon)
+                            int endPos = startPos + charsPerLine;
+                            int lastSpace = reasonStr.lastIndexOf(' ', endPos);
+                            int lastSemi = reasonStr.lastIndexOf(';', endPos);
+                            int breakPos = max(lastSpace, lastSemi);
+                            
+                            if (breakPos > startPos && breakPos <= endPos) {
+                                // Found a good break point
+                                line = reasonStr.substring(startPos, breakPos + 1);
+                                startPos = breakPos + 1;
+                                // Skip leading space on next line
+                                while (startPos < reasonStr.length() && reasonStr.charAt(startPos) == ' ') {
+                                    startPos++;
+                                }
+                            } else {
+                                // No good break point, hard break
+                                line = reasonStr.substring(startPos, endPos);
+                                startPos = endPos;
+                            }
+                        }
+                        
+                        // Right-align the text
+                        int textWidth = line.length() * 6;  // Approx 6 pixels per char
+                        int xPos = screenWidth - textWidth - 5;  // 5 pixels right margin
+                        if (xPos < valueColumnX) xPos = valueColumnX;  // Don't go past left boundary
+                        
+                        M5.Lcd.setCursor(xPos, y + currentLine * (FONT_HEIGHT_PIXELS + 2));
+                        M5.Lcd.print(line);
+                        
+                        currentLine++;
+                        if (startPos >= reasonStr.length()) break;
+                    }
                 }
             }
             nextItem();
@@ -955,13 +1005,14 @@ void drawLargeDisplay() {
     static bool lastDataValid = false;
     static bool lastHasSOC = false;  // Track if SOC was available in previous render
     
-    // Reset cache on device change
-    if (deviceChanged) {
+    // Reset cache on device change OR when just entering large display mode
+    if (deviceChanged || largeDisplayJustEntered) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastSOC = -999.0;
         lastDataValid = false;
         lastHasSOC = false;
+        largeDisplayJustEntered = false;  // Clear the flag after reset
     }
     
     // Detect if SOC status changed (became available or unavailable)
@@ -1134,6 +1185,7 @@ void loop() {
                 VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
                 if (device && device->type == DEVICE_SMART_SHUNT) {
                     largeDisplayMode = true;
+                    largeDisplayJustEntered = true;  // Set flag to reset cache
                     M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                     Serial.println("Entering large display mode");
                 } else {
@@ -1187,6 +1239,7 @@ void loop() {
             if (device && device->type == DEVICE_SMART_SHUNT) {
                 Serial.println("Auto-entering large display mode due to inactivity");
                 largeDisplayMode = true;
+                largeDisplayJustEntered = true;  // Set flag to reset cache
                 M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                 drawDisplay();
             }
