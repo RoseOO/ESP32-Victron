@@ -247,7 +247,8 @@
                     <strong>Font Size:</strong> <span id="lcdFontSize">Loading...</span><br>
                     <strong>Auto-Scroll:</strong> <span id="lcdAutoScroll">Loading...</span><br>
                     <strong>Scroll Rate:</strong> <span id="lcdScrollRate">Loading...</span><br>
-                    <strong>Orientation:</strong> <span id="lcdOrientation">Loading...</span>
+                    <strong>Orientation:</strong> <span id="lcdOrientation">Loading...</span><br>
+                    <strong>Large Display Timeout:</strong> <span id="lcdLargeTimeout">Loading...</span>
                 </div>
                 <button class="btn-primary" onclick="openLCDModal()">
                     Configure Display
@@ -454,8 +455,13 @@
                     </select>
                     <small>Screen orientation mode (requires reboot to apply)</small>
                 </div>
+                <div class="form-group">
+                    <label>Large Display Timeout (seconds)</label>
+                    <input type="number" id="lcdLargeTimeoutInput" placeholder="60" value="60" min="0" max="300">
+                    <small>Time before entering large display mode (0 = disabled, 10-300 seconds when enabled)</small>
+                </div>
                 <div class="info-box">
-                    <strong>Info:</strong> These settings control how device information is displayed on the M5StickC PLUS2 LCD screen. Changing orientation will reboot the device.
+                    <strong>Info:</strong> These settings control how device information is displayed on the M5StickC PLUS2 LCD screen. Changing orientation will reboot the device. Large display mode shows voltage, current, and battery SOC in large font.
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-secondary" onclick="closeLCDModal()">Cancel</button>
@@ -740,12 +746,14 @@
                     document.getElementById('lcdAutoScroll').textContent = (lcd.autoScroll !== false) ? 'Enabled' : 'Disabled';
                     document.getElementById('lcdScrollRate').textContent = (lcd.scrollRate || 5) + ' seconds';
                     document.getElementById('lcdOrientation').textContent = lcd.orientation === 'portrait' ? 'Portrait' : 'Landscape';
+                    document.getElementById('lcdLargeTimeout').textContent = (lcd.largeTimeout === 0) ? 'Disabled' : lcd.largeTimeout + ' seconds';
                 })
                 .catch(err => {
                     document.getElementById('lcdFontSize').textContent = 'Error loading';
                     document.getElementById('lcdAutoScroll').textContent = 'Error loading';
                     document.getElementById('lcdScrollRate').textContent = 'Error loading';
                     document.getElementById('lcdOrientation').textContent = 'Error loading';
+                    document.getElementById('lcdLargeTimeout').textContent = 'Error loading';
                 });
         }
 
@@ -771,6 +779,7 @@
                     document.getElementById('lcdScrollRateInput').value = lcd.scrollRate || 5;
                     document.getElementById('lcdOrientationInput').value = lcd.orientation || 'landscape';
                     document.getElementById('lcdAutoScrollInput').value = (lcd.autoScroll !== false) ? 'true' : 'false';
+                    document.getElementById('lcdLargeTimeoutInput').value = lcd.largeTimeout !== undefined ? lcd.largeTimeout : 60;
                     document.getElementById('lcdModal').classList.add('active');
                 });
         }
@@ -813,6 +822,7 @@
             formData.append('scrollRate', document.getElementById('lcdScrollRateInput').value);
             formData.append('orientation', document.getElementById('lcdOrientationInput').value);
             formData.append('autoScroll', document.getElementById('lcdAutoScrollInput').value);
+            formData.append('largeTimeout', document.getElementById('lcdLargeTimeoutInput').value);
             
             fetch('/api/lcd', {
                 method: 'POST',
