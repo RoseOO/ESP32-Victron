@@ -127,8 +127,12 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // [0-1]: Manufacturer ID (0x02E1) - little-endian
     // [2-3]: Model ID - little-endian
     // [4]: Readout type / Encryption indicator (0x00 for instant readout, non-zero for encrypted)
-    // [5-6]: IV/Counter (nonce) - little-endian (only present if encrypted)
-    // [7+]: Data (encrypted if byte 4 != 0x00, otherwise unencrypted records)
+    // For encrypted packets:
+    //   [5-6]: IV/Counter (nonce) - little-endian
+    //   [7]: Encryption key match byte (first byte, should match first byte of key)
+    //   [8+]: Encrypted data records
+    // For unencrypted packets:
+    //   [5+]: Data records (unencrypted)
     
     if (length < 5) return false;
     
