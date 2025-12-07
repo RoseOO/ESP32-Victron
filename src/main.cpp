@@ -434,6 +434,17 @@ void drawDisplay() {
         return;
     }
     
+    // Calculate layout constants early so they are available when handling device/scroll changes
+    const int TITLE_FONT_SIZE = 1;  // Keep title font size constant
+    const int FONT_HEIGHT_PIXELS = 8;  // Height of a character in pixels at font size 1
+    const int valueColumnX = 80 * lcdFontSize;
+    const int lineSpacing = 15 * lcdFontSize;
+    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
+    const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
+    const int maxChars = (lcdOrientation == "portrait") ? 18 : 26;
+    const int dataStartY = 30;  // Where data section starts
+    const int dataAreaHeight = bottomY - dataStartY;  // Available height for data
+
     // Track if this is a new device to force full redraw and reset scroll
     static String lastDeviceAddress = "";
     static int lastVerticalScrollOffset = 0;
@@ -449,17 +460,6 @@ void drawDisplay() {
         M5.Lcd.fillRect(0, dataStartY, screenWidth, dataAreaHeight, BLACK);
         lastVerticalScrollOffset = verticalScrollOffset;
     }
-    
-    // Calculate layout constants - use fixed sizes for headers regardless of lcdFontSize setting
-    const int TITLE_FONT_SIZE = 1;  // Keep title font size constant
-    const int FONT_HEIGHT_PIXELS = 8;  // Height of a character in pixels at font size 1
-    const int valueColumnX = 80 * lcdFontSize;
-    const int lineSpacing = 15 * lcdFontSize;
-    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
-    const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
-    const int maxChars = (lcdOrientation == "portrait") ? 18 : 26;
-    const int dataStartY = 30;  // Where data section starts
-    const int dataAreaHeight = bottomY - dataStartY;  // Available height for data
     
     // Count total data items to determine if scrolling is needed
     int dataItemCount = 2;  // Voltage and Current are always shown
