@@ -318,10 +318,11 @@ int VictronBLE::getDeviceCount() {
 
 String VictronBLE::normalizeAddress(const String& address) {
     String normalized = "";
+    normalized.reserve(12);  // Pre-allocate for MAC address without colons (12 hex chars)
     for (size_t i = 0; i < address.length(); i++) {
         char c = address[i];
         if (c != ':') {
-            normalized += tolower(c);
+            normalized += (char)tolower(c);
         }
     }
     return normalized;

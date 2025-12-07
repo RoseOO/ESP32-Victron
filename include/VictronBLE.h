@@ -159,7 +159,7 @@ private:
     
     // Helper function to normalize MAC addresses for comparison
     // Removes colons and converts to lowercase
-    static String normalizeAddress(const String& address);
+    String normalizeAddress(const String& address);
     
 public:
     VictronBLE();
