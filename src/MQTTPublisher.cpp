@@ -84,6 +84,8 @@ void MQTTPublisher::publishAll() {
         
         // Publish Home Assistant discovery if enabled and not yet published for this device
         if (config.homeAssistant && discoveryPublished.find(device->address) == discoveryPublished.end()) {
+            Serial.printf("Publishing HA discovery for device: %s (%s)\n", 
+                         device->name.c_str(), device->address.c_str());
             publishDiscovery(device);
             discoveryPublished[device->address] = true;
         }
@@ -196,6 +198,7 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
         
         mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
         Serial.printf("Published HA discovery: %s\n", discoveryTopic.c_str());
+        Serial.printf("  Payload length: %d bytes\n", payload.length());
         // Note: Discovery messages are sent once on connect, not frequently
         // MQTT client handles queueing internally, no delay needed
     }
