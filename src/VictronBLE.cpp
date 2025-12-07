@@ -505,11 +505,11 @@ uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
 }
 
 // Validate voltage reading with sanity check
-// Returns true if voltage is valid (<=30V), false if invalid
+// Returns true if voltage is valid (<=MAX_VALID_VOLTAGE), false if invalid
 // If invalid, sets device.dataValid to false and logs an error
 bool VictronBLE::validateVoltage(float voltage, const char* source, VictronDeviceData& device) {
-    // Sanity check: discard packet if voltage > 30V (clearly incorrect data)
-    if (voltage > 30.0f) {
+    // Sanity check: discard packet if voltage > MAX_VALID_VOLTAGE (clearly incorrect data)
+    if (voltage > MAX_VALID_VOLTAGE) {
         device.dataValid = false;
         device.errorMessage = "Invalid voltage reading (>30V) - packet discarded";
         Serial.printf("ERROR: Invalid voltage %.2fV detected in %s packet - discarding\n", voltage, source);

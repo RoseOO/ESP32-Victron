@@ -14,6 +14,11 @@
 #define SOLAR_CONTROLLER_PAYLOAD_SIZE 16
 #define DCDC_CONVERTER_PAYLOAD_SIZE 16
 
+// Voltage sanity check threshold (in volts)
+// Packets with voltage readings exceeding this value will be discarded
+// as they indicate clearly incorrect data
+#define MAX_VALID_VOLTAGE 30.0f
+
 // Device Types
 enum VictronDeviceType {
     DEVICE_UNKNOWN = 0,
