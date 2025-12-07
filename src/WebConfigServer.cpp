@@ -879,6 +879,7 @@ extern int lcdFontSize;
 extern int lcdScrollRate;
 extern String lcdOrientation;
 extern bool lcdAutoScroll;
+extern int largeDisplayTimeout;
 extern void saveLCDConfig();
 extern bool pendingReboot;
 extern unsigned long rebootScheduledTime;
@@ -889,7 +890,8 @@ void WebConfigServer::handleGetLCDConfig(AsyncWebServerRequest *request) {
     json += "\"fontSize\":" + String(lcdFontSize) + ",";
     json += "\"scrollRate\":" + String(lcdScrollRate) + ",";
     json += "\"orientation\":\"" + lcdOrientation + "\",";
-    json += "\"autoScroll\":" + String(lcdAutoScroll ? "true" : "false");
+    json += "\"autoScroll\":" + String(lcdAutoScroll ? "true" : "false") + ",";
+    json += "\"largeTimeout\":" + String(largeDisplayTimeout);
     json += "}";
     
     request->send(200, "application/json", json);
@@ -897,7 +899,8 @@ void WebConfigServer::handleGetLCDConfig(AsyncWebServerRequest *request) {
 
 void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
     if (!request->hasParam("fontSize", true) || !request->hasParam("scrollRate", true) || 
-        !request->hasParam("orientation", true) || !request->hasParam("autoScroll", true)) {
+        !request->hasParam("orientation", true) || !request->hasParam("autoScroll", true) ||
+        !request->hasParam("largeTimeout", true)) {
         request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
         return;
     }
@@ -906,10 +909,12 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
     String scrollRateStr = request->getParam("scrollRate", true)->value();
     String orientationStr = request->getParam("orientation", true)->value();
     String autoScrollStr = request->getParam("autoScroll", true)->value();
+    String largeTimeoutStr = request->getParam("largeTimeout", true)->value();
     
     int newFontSize = fontSizeStr.toInt();
     int newScrollRate = scrollRateStr.toInt();
     bool newAutoScroll = (autoScrollStr == "true" || autoScrollStr == "1");
+    int newLargeTimeout = largeTimeoutStr.toInt();
     
     // Validate font size (1-3)
     if (newFontSize < 1 || newFontSize > 3) {
@@ -929,6 +934,12 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
         return;
     }
     
+    // Validate large display timeout (0 = disabled, or 10-300 seconds)
+    if (newLargeTimeout != 0 && (newLargeTimeout < 10 || newLargeTimeout > 300)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Large display timeout must be 0 (disabled) or between 10 and 300 seconds\"}");
+        return;
+    }
+    
     // Check if orientation changed - if so, we need to reboot
     bool orientationChanged = (orientationStr != lcdOrientation);
     
@@ -936,6 +947,7 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
     lcdScrollRate = newScrollRate;
     lcdOrientation = orientationStr;
     lcdAutoScroll = newAutoScroll;
+    largeDisplayTimeout = newLargeTimeout;
     
     saveLCDConfig();
     

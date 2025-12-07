@@ -436,11 +436,18 @@ void drawDisplay() {
     
     // Track if this is a new device to force full redraw and reset scroll
     static String lastDeviceAddress = "";
+    static int lastVerticalScrollOffset = 0;
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
+    bool scrollChanged = (lastVerticalScrollOffset != verticalScrollOffset);
     if (deviceChanged) {
         M5.Lcd.fillScreen(BLACK);
         lastDeviceAddress = deviceAddresses[currentDeviceIndex];
         verticalScrollOffset = 0;  // Reset vertical scroll on device change
+        lastVerticalScrollOffset = verticalScrollOffset;
+    } else if (scrollChanged) {
+        // Clear the data area when scroll position changes
+        M5.Lcd.fillRect(0, dataStartY, screenWidth, dataAreaHeight, BLACK);
+        lastVerticalScrollOffset = verticalScrollOffset;
     }
     
     // Calculate layout constants - use fixed sizes for headers regardless of lcdFontSize setting
@@ -542,8 +549,8 @@ void drawDisplay() {
     static int lastTimeToGo = -999;
     static bool lastDataValid = false;
     
-    // Reset cache on device change
-    if (deviceChanged) {
+    // Reset cache on device change or scroll change
+    if (deviceChanged || scrollChanged) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastPower = -999.0;
@@ -823,7 +830,7 @@ void drawDisplay() {
         }
     }
     
-    // Show scroll indicator if content overflows
+    // Show scroll indicator if content overflows (update always when scrolling)
     if (needsVerticalScroll) {
         // Draw scroll indicator showing position
         int indicatorX = screenWidth - 10;
@@ -1053,6 +1060,7 @@ void loop() {
             // Exit large mode if already in it
             if (largeDisplayMode) {
                 largeDisplayMode = false;
+                M5.Lcd.fillScreen(BLACK);  // Full screen refresh when exiting large mode
                 Serial.println("Exiting large display mode");
             }
             // Enter large display mode if we're in normal mode with a SmartShunt device
@@ -1060,6 +1068,7 @@ void loop() {
                 VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
                 if (device && device->type == DEVICE_SMART_SHUNT) {
                     largeDisplayMode = true;
+                    M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                     Serial.println("Entering large display mode");
                 } else {
                     Serial.println("Large display mode only works with SmartShunt devices");
@@ -1087,6 +1096,7 @@ void loop() {
         } else if (largeDisplayMode) {
             // In large display mode: exit it
             largeDisplayMode = false;
+            M5.Lcd.fillScreen(BLACK);  // Full screen refresh when exiting large mode
             drawDisplay();
         } else if (!webConfigMode) {
             // Normal mode: cycle through devices
@@ -1108,6 +1118,7 @@ void loop() {
             if (device && device->type == DEVICE_SMART_SHUNT) {
                 Serial.println("Auto-entering large display mode due to inactivity");
                 largeDisplayMode = true;
+                M5.Lcd.fillScreen(BLACK);  // Full screen refresh when entering large mode
                 drawDisplay();
             }
         }
