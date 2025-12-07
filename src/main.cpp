@@ -477,6 +477,11 @@ void drawDisplay() {
     }
     if (device->hasInputVoltage) dataItemCount++;
     if (device->hasOutputVoltage) dataItemCount++;
+    // Add DC-DC specific fields
+    if (device->type == DEVICE_DCDC_CONVERTER) {
+        if (device->deviceState != 0 && device->deviceState != 0xFF) dataItemCount++;  // State
+        if (device->offReason != 0) dataItemCount++;  // Off reason
+    }
     
     // Calculate if we need vertical scrolling
     int totalContentHeight = dataItemCount * lineSpacing;
@@ -815,6 +820,51 @@ void drawDisplay() {
             }
         }
         nextItem();
+    }
+    
+    // DC-DC Converter state and off reason
+    if (device->type == DEVICE_DCDC_CONVERTER) {
+        // Show device state if available
+        if (device->deviceState != 0 && device->deviceState != 0xFF) {
+            if (shouldRenderItem()) {
+                M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+                M5.Lcd.setTextColor(GREEN, BLACK);
+                M5.Lcd.setCursor(5, y);
+                M5.Lcd.print("State:");
+                
+                if (deviceChanged) {
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    M5.Lcd.setTextSize(1);  // Use small font for state text
+                    M5.Lcd.setTextColor(WHITE, BLACK);
+                    M5.Lcd.setCursor(valueColumnX, y);
+                    String stateStr = VictronBLE::deviceStateToString(device->deviceState);
+                    if (stateStr.length() > 12) stateStr = stateStr.substring(0, 12);
+                    M5.Lcd.print(stateStr);
+                }
+            }
+            nextItem();
+        }
+        
+        // Show off reason if device is off
+        if (device->offReason != 0) {
+            if (shouldRenderItem()) {
+                M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+                M5.Lcd.setTextColor(YELLOW, BLACK);
+                M5.Lcd.setCursor(5, y);
+                M5.Lcd.print("Off:");
+                
+                if (deviceChanged) {
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    M5.Lcd.setTextSize(1);  // Use small font for reason text
+                    M5.Lcd.setTextColor(YELLOW, BLACK);
+                    M5.Lcd.setCursor(valueColumnX, y);
+                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
+                    if (reasonStr.length() > 12) reasonStr = reasonStr.substring(0, 12);
+                    M5.Lcd.print(reasonStr);
+                }
+            }
+            nextItem();
+        }
     }
     
     // Draw bottom instructions (only on device change to reduce flicker)
@@ -1178,6 +1228,11 @@ void loop() {
                 }
                 if (device->hasInputVoltage) dataItemCount++;
                 if (device->hasOutputVoltage) dataItemCount++;
+                // Add DC-DC specific fields
+                if (device->type == DEVICE_DCDC_CONVERTER) {
+                    if (device->deviceState != 0 && device->deviceState != 0xFF) dataItemCount++;
+                    if (device->offReason != 0) dataItemCount++;
+                }
                 
                 // Calculate if scrolling is needed
                 const int lineSpacing = 15 * lcdFontSize;

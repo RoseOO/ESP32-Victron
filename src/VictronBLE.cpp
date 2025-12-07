@@ -722,8 +722,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
 }
 
 // Parse DC-DC Converter data (16-byte fixed structure, but handle partial data)
-// This is a best-guess implementation as the reference doesn't include DC-DC specific code
-// We'll try to extract basic parameters similar to solar controller
+// Based on reference implementation: mp-se/victron-receiver
+// Data layout: state(8), error(8), inputV(16), outputV(16), offReason(32)
 void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device) {
     // Parse whatever fields are available based on actual data length
     // Each field is only parsed if we have enough bytes for it
@@ -738,10 +738,10 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
         device.chargerError = output[1];
     }
     
-    // Input Voltage (bytes 2-3, signed 16-bit, units: 10mV)
+    // Input Voltage (bytes 2-3, unsigned 16-bit, units: 10mV)
     if (length >= 4) {
-        int16_t inputMv10 = extractSigned16(output, 2);
-        if (inputMv10 != 0x7FFF) {
+        uint16_t inputMv10 = extractUnsigned16(output, 2);
+        if (inputMv10 != 0xFFFF) {
             float inputVoltage = inputMv10 / 100.0f;
             if (!validateVoltage(inputVoltage, "DCDC input", device)) {
                 return;
@@ -767,13 +767,17 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
         }
     }
     
-    // Off Reason (byte 6)
-    if (length >= 7) {
-        device.offReason = output[6];
+    // Off Reason (bytes 6-9, unsigned 32-bit)
+    if (length >= 10) {
+        device.offReason = (uint32_t)output[6] | 
+                          ((uint32_t)output[7] << 8) | 
+                          ((uint32_t)output[8] << 16) | 
+                          ((uint32_t)output[9] << 24);
     }
     
-    Serial.printf("DCDC parsed: In=%.2fV, Out=%.2fV, State=%d\n", 
-                 device.inputVoltage, device.outputVoltage, device.deviceState);
+    Serial.printf("DCDC parsed: In=%.2fV, Out=%.2fV, State=%d, Error=%d, OffReason=0x%08X\n", 
+                 device.inputVoltage, device.outputVoltage, device.deviceState, 
+                 device.chargerError, device.offReason);
 }
 
 // Parse TLV records (fallback for unknown device types or unencrypted instant readout)
@@ -1020,4 +1024,111 @@ void VictronBLE::setRetainLastData(bool retain) {
 
 bool VictronBLE::getRetainLastData() const {
     return retainLastData;
+}
+
+// Helper function to convert device state to human-readable string
+String VictronBLE::deviceStateToString(int state) {
+    switch (state) {
+        case 0: return "Off";
+        case 1: return "Low Power";
+        case 2: return "Fault";
+        case 3: return "Bulk";
+        case 4: return "Absorption";
+        case 5: return "Float";
+        case 6: return "Storage";
+        case 7: return "Equalize Manual";
+        case 9: return "Inverting";
+        case 11: return "Power Supply";
+        case 245: return "Starting Up";
+        case 246: return "Repeated Absorption";
+        case 247: return "Recondition";
+        case 248: return "Battery Safe";
+        case 249: return "Active";
+        case 252: return "External Control";
+        default: return "Unknown (" + String(state) + ")";
+    }
+}
+
+// Helper function to convert charger error to human-readable string
+String VictronBLE::chargerErrorToString(int error) {
+    switch (error) {
+        case 0: return "No error";
+        case 1: return "Battery temp too high";
+        case 2: return "Battery voltage too high";
+        case 3: return "Remote temp sensor failure";
+        case 11: return "Battery high ripple";
+        case 14: return "Battery temp too low";
+        case 17: return "Charger temp too high";
+        case 18: return "Charger over current";
+        case 20: return "Bulk time limit exceeded";
+        case 21: return "Current sensor issue";
+        case 26: return "Terminals overheated";
+        case 27: return "Charger short circuit";
+        case 28: return "Power stage issue";
+        case 29: return "Over-Charge protection";
+        case 33: return "PV over-voltage";
+        case 34: return "PV over-current";
+        case 65: return "Communication lost";
+        case 67: return "BMS connection lost";
+        case 114: return "CPU temperature too high";
+        case 116: return "Calibration data lost";
+        case 117: return "Invalid firmware";
+        case 119: return "Settings data lost";
+        default: return "Error " + String(error);
+    }
+}
+
+// Helper function to convert off reason to human-readable string
+String VictronBLE::offReasonToString(uint32_t offReason) {
+    if (offReason == 0) {
+        return "Active";
+    }
+    
+    String reasons = "";
+    if (offReason & 0x00000001) reasons += "No input power; ";
+    if (offReason & 0x00000002) reasons += "Switched off; ";
+    if (offReason & 0x00000004) reasons += "Switched off (register); ";
+    if (offReason & 0x00000008) reasons += "Remote input; ";
+    if (offReason & 0x00000010) reasons += "Protection active; ";
+    if (offReason & 0x00000020) reasons += "Pay-as-you-go; ";
+    if (offReason & 0x00000040) reasons += "BMS; ";
+    if (offReason & 0x00000080) reasons += "Engine shutdown; ";
+    if (offReason & 0x00000100) reasons += "Analysing input; ";
+    
+    // Remove trailing "; "
+    if (reasons.length() > 2) {
+        reasons = reasons.substring(0, reasons.length() - 2);
+    }
+    
+    return reasons;
+}
+
+// Helper function to convert alarm reason to human-readable string
+String VictronBLE::alarmReasonToString(uint16_t alarm) {
+    if (alarm == 0) {
+        return "No alarm";
+    }
+    
+    String alarms = "";
+    if (alarm & 0x0001) alarms += "Low voltage; ";
+    if (alarm & 0x0002) alarms += "High voltage; ";
+    if (alarm & 0x0004) alarms += "Low SOC; ";
+    if (alarm & 0x0008) alarms += "Low starter voltage; ";
+    if (alarm & 0x0010) alarms += "High starter voltage; ";
+    if (alarm & 0x0020) alarms += "Low temperature; ";
+    if (alarm & 0x0040) alarms += "High temperature; ";
+    if (alarm & 0x0080) alarms += "Mid voltage; ";
+    if (alarm & 0x0100) alarms += "Overload; ";
+    if (alarm & 0x0200) alarms += "DC ripple; ";
+    if (alarm & 0x0400) alarms += "Low VAC out; ";
+    if (alarm & 0x0800) alarms += "High VAC out; ";
+    if (alarm & 0x1000) alarms += "Short circuit; ";
+    if (alarm & 0x2000) alarms += "BMS lockout; ";
+    
+    // Remove trailing "; "
+    if (alarms.length() > 2) {
+        alarms = alarms.substring(0, alarms.length() - 2);
+    }
+    
+    return alarms;
 }
