@@ -522,7 +522,15 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
     if (length >= 4) {
         int16_t battMv10 = extractSigned16(output, 2);
         if (battMv10 != 0x7FFF) {
-            device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+            float voltage = battMv10 / 100.0f;  // convert 10mV to V
+            // Sanity check: discard packet if voltage > 30V (clearly incorrect data)
+            if (voltage > 30.0f) {
+                device.dataValid = false;
+                device.errorMessage = "Invalid voltage reading (>30V) - packet discarded";
+                Serial.printf("ERROR: Invalid voltage %.2fV detected in SmartShunt packet - discarding\n", voltage);
+                return;
+            }
+            device.voltage = voltage;
             device.hasVoltage = true;
         }
     }
@@ -615,7 +623,15 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
     if (length >= 4) {
         int16_t battMv10 = extractSigned16(output, 2);
         if (battMv10 != 0x7FFF) {
-            device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+            float voltage = battMv10 / 100.0f;  // convert 10mV to V
+            // Sanity check: discard packet if voltage > 30V (clearly incorrect data)
+            if (voltage > 30.0f) {
+                device.dataValid = false;
+                device.errorMessage = "Invalid voltage reading (>30V) - packet discarded";
+                Serial.printf("ERROR: Invalid voltage %.2fV detected in SolarController packet - discarding\n", voltage);
+                return;
+            }
+            device.voltage = voltage;
             device.hasVoltage = true;
         }
     }
@@ -686,7 +702,15 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
     if (length >= 4) {
         int16_t inputMv10 = extractSigned16(output, 2);
         if (inputMv10 != 0x7FFF) {
-            device.inputVoltage = inputMv10 / 100.0f;
+            float inputVoltage = inputMv10 / 100.0f;
+            // Sanity check: discard packet if input voltage > 30V (clearly incorrect data)
+            if (inputVoltage > 30.0f) {
+                device.dataValid = false;
+                device.errorMessage = "Invalid input voltage reading (>30V) - packet discarded";
+                Serial.printf("ERROR: Invalid input voltage %.2fV detected in DCDC packet - discarding\n", inputVoltage);
+                return;
+            }
+            device.inputVoltage = inputVoltage;
             device.hasInputVoltage = true;
         }
     }
@@ -695,7 +719,15 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
     if (length >= 6) {
         int16_t outputMv10 = extractSigned16(output, 4);
         if (outputMv10 != 0x7FFF) {
-            device.outputVoltage = outputMv10 / 100.0f;
+            float outputVoltage = outputMv10 / 100.0f;
+            // Sanity check: discard packet if output voltage > 30V (clearly incorrect data)
+            if (outputVoltage > 30.0f) {
+                device.dataValid = false;
+                device.errorMessage = "Invalid output voltage reading (>30V) - packet discarded";
+                Serial.printf("ERROR: Invalid output voltage %.2fV detected in DCDC packet - discarding\n", outputVoltage);
+                return;
+            }
+            device.outputVoltage = outputVoltage;
             device.hasOutputVoltage = true;
             // Also set as general voltage for display
             device.voltage = device.outputVoltage;
@@ -742,8 +774,18 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
             case BATTERY_VOLTAGE:
             case SOLAR_CHARGER_VOLTAGE:
             case CHARGER_VOLTAGE:
-                device.voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasVoltage = true;
+                {
+                    float voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                    // Sanity check: discard packet if voltage > 30V (clearly incorrect data)
+                    if (voltage > 30.0f) {
+                        device.dataValid = false;
+                        device.errorMessage = "Invalid voltage reading (>30V) - packet discarded";
+                        Serial.printf("ERROR: Invalid voltage %.2fV detected in TLV packet - discarding\n", voltage);
+                        return;
+                    }
+                    device.voltage = voltage;
+                    device.hasVoltage = true;
+                }
                 break;
                 
             case BATTERY_CURRENT:
