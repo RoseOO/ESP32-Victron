@@ -13,6 +13,7 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 - **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Detailed hardware installation guide
 - **[Victron BLE Protocol](docs/VICTRON_BLE_PROTOCOL.md)** - Technical protocol documentation
+- **[Data Parsing Implementation](docs/DATA_PARSING.md)** - Detailed guide to Victron data parsing (NEW!)
 - **[Configuration Examples](examples/CONFIGURATION.md)** - Customization and advanced features
 - **[Arduino IDE Guide](arduino/README.md)** - Arduino IDE specific instructions
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to this project
