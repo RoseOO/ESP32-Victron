@@ -9,6 +9,11 @@
 // Victron BLE Service UUID
 #define VICTRON_MANUFACTURER_ID 0x02E1
 
+// Fixed payload sizes for different device types
+#define SMART_SHUNT_PAYLOAD_SIZE 15
+#define SOLAR_CONTROLLER_PAYLOAD_SIZE 16
+#define DCDC_CONVERTER_PAYLOAD_SIZE 16
+
 // Device Types
 enum VictronDeviceType {
     DEVICE_UNKNOWN = 0,
@@ -175,7 +180,8 @@ private:
     bool decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key);
     float decodeValue(const uint8_t* data, int len, float scale);
     
-    // Device-specific parsing functions for the 16-byte fixed structure
+    // Device-specific parsing functions for fixed structures
+    // SmartShunt: 15 bytes, Solar Controller: 16 bytes, DC-DC Converter: 16 bytes
     void parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device);
