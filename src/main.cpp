@@ -38,6 +38,7 @@ bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
 bool largeDisplayMode = false;  // Toggle for large display mode (voltage, current, SOC only)
 bool largeDisplayJustEntered = false;  // Track when we just entered large display mode to reset cache
+bool wasInLargeMode = false;  // Track if we were in large display mode on previous draw call
 int verticalScrollOffset = 0;  // Current vertical scroll position (0-based index of first visible item)
 
 // Button double-press detection
@@ -451,6 +452,9 @@ void drawDisplay() {
     static int lastVerticalScrollOffset = 0;
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
     bool scrollChanged = (lastVerticalScrollOffset != verticalScrollOffset);
+    bool modeChanged = wasInLargeMode;  // We're in normal mode now, so check if we just came from large mode
+    wasInLargeMode = false;  // Update the state for next call
+    
     if (deviceChanged) {
         M5.Lcd.fillScreen(BLACK);
         lastDeviceAddress = deviceAddresses[currentDeviceIndex];
@@ -499,7 +503,7 @@ void drawDisplay() {
     }
     
     // Device name header - always use fixed title font size
-    if (deviceChanged) {
+    if (deviceChanged || modeChanged) {
         M5.Lcd.setTextSize(TITLE_FONT_SIZE);
         M5.Lcd.setTextColor(CYAN, BLACK);
         M5.Lcd.setCursor(0, 0);
@@ -555,8 +559,8 @@ void drawDisplay() {
     static int lastTimeToGo = -999;
     static bool lastDataValid = false;
     
-    // Reset cache on device change or scroll change
-    if (deviceChanged || scrollChanged) {
+    // Reset cache on device change or scroll change or mode change
+    if (deviceChanged || scrollChanged || modeChanged) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastPower = -999.0;
@@ -595,7 +599,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Voltage:");
         
-        if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+        if (deviceChanged || modeChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
             // Clear value area before redrawing
             M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
@@ -619,7 +623,7 @@ void drawDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("Current:");
         
-        if (deviceChanged || device->current != lastCurrent || device->dataValid != lastDataValid) {
+        if (deviceChanged || modeChanged || device->current != lastCurrent || device->dataValid != lastDataValid) {
             M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
@@ -642,7 +646,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("Power:");
             
-            if (deviceChanged || device->power != lastPower) {
+            if (deviceChanged || modeChanged || device->power != lastPower) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
@@ -662,7 +666,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("Battery:");
             
-            if (deviceChanged || device->batterySOC != lastSOC) {
+            if (deviceChanged || modeChanged || device->batterySOC != lastSOC) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 uint16_t color = WHITE;
@@ -690,7 +694,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("Consumed:");
             
-            if (deviceChanged || device->consumedAh != lastConsumedAh) {
+            if (deviceChanged || modeChanged || device->consumedAh != lastConsumedAh) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
@@ -710,7 +714,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("Time2Go:");
             
-            if (deviceChanged || device->timeToGo != lastTimeToGo) {
+            if (deviceChanged || modeChanged || device->timeToGo != lastTimeToGo) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
@@ -737,7 +741,7 @@ void drawDisplay() {
             M5.Lcd.setCursor(5, y);
             M5.Lcd.print("Temp:");
             
-            if (deviceChanged || device->temperature != lastTemp) {
+            if (deviceChanged || modeChanged || device->temperature != lastTemp) {
                 M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
@@ -926,8 +930,8 @@ void drawDisplay() {
         }
     }
     
-    // Draw bottom instructions (only on device change to reduce flicker)
-    if (deviceChanged) {
+    // Draw bottom instructions (only on device change or mode change to reduce flicker)
+    if (deviceChanged || modeChanged) {
         M5.Lcd.drawLine(0, bottomY, screenWidth, bottomY, DARKGREY);
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(DARKGREY, BLACK);
@@ -949,10 +953,25 @@ void drawDisplay() {
         M5.Lcd.fillRect(indicatorX - 5, indicatorY - 10, 15, 25, BLACK);
         
         M5.Lcd.setTextSize(1);
-        // Show current scroll position: first visible item / total items
+        // Calculate page numbers for display
+        // Note: We scroll one item at a time (not page-by-page), but display page numbers
+        // The page number indicates which "page" the first visible item belongs to
+        // 
+        // Example with 7 items and 3 items/page:
+        //   scrollOffset 0-2 → Page 1 (items 0-2 are part of page 1)
+        //   scrollOffset 3-5 → Page 2 (items 3-5 are part of page 2)
+        //   scrollOffset 6   → Page 3 (item 6 is part of page 3)
+        //
+        // This means during smooth scrolling, you might see "Page 1" even when items
+        // from page 2 are partially visible, which is expected behavior for item-based scrolling
+        int currentPage = (verticalScrollOffset / maxItemsVisible) + 1;
+        // Total pages: ceiling division to show all items
+        int totalPages = (dataItemCount + maxItemsVisible - 1) / maxItemsVisible;
+        
+        // Show current page / total pages
         M5.Lcd.setTextColor(YELLOW, BLACK);
         M5.Lcd.setCursor(indicatorX - 10, indicatorY);
-        M5.Lcd.printf("%d/%d", verticalScrollOffset + 1, dataItemCount);
+        M5.Lcd.printf("%d/%d", currentPage, totalPages);
         
         // Show scroll arrows
         if (verticalScrollOffset > 0) {
@@ -997,6 +1016,8 @@ void drawLargeDisplay() {
     
     // Track if this is a new device to force full redraw
     static String lastDeviceAddress = "";
+    bool modeChanged = !wasInLargeMode;  // We're in large mode now, check if we just came from normal mode
+    wasInLargeMode = true;  // Set flag to indicate we're in large mode now
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
     if (deviceChanged) {
         M5.Lcd.fillScreen(BLACK);
@@ -1015,7 +1036,7 @@ void drawLargeDisplay() {
     static bool lastHasSOC = false;  // Track if SOC was available in previous render
     
     // Reset cache on device change OR when just entering large display mode
-    if (deviceChanged || largeDisplayJustEntered) {
+    if (deviceChanged || largeDisplayJustEntered || modeChanged) {
         lastVoltage = -999.0;
         lastCurrent = -999.0;
         lastSOC = -999.0;
@@ -1031,7 +1052,7 @@ void drawLargeDisplay() {
     }
     
     // Device name header (small font)
-    if (deviceChanged) {
+    if (deviceChanged || modeChanged) {
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(CYAN, BLACK);
         M5.Lcd.setCursor(5, 0);
@@ -1056,7 +1077,7 @@ void drawLargeDisplay() {
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("VOLTAGE");
     
-    if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+    if (deviceChanged || modeChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
         M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
         M5.Lcd.setTextSize(3);
         M5.Lcd.setTextColor(WHITE, BLACK);
@@ -1077,7 +1098,7 @@ void drawLargeDisplay() {
     M5.Lcd.setCursor(5, y);
     M5.Lcd.print("CURRENT");
     
-    if (deviceChanged || device->current != lastCurrent) {
+    if (deviceChanged || modeChanged || device->current != lastCurrent) {
         M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
         M5.Lcd.setTextSize(3);
         M5.Lcd.setTextColor(WHITE, BLACK);
@@ -1103,7 +1124,7 @@ void drawLargeDisplay() {
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("BATTERY SOC");
         
-        if (deviceChanged || socStatusChanged || device->batterySOC != lastSOC) {
+        if (deviceChanged || modeChanged || socStatusChanged || device->batterySOC != lastSOC) {
             M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
             M5.Lcd.setTextSize(3);
             uint16_t color = WHITE;
@@ -1132,7 +1153,7 @@ void drawLargeDisplay() {
     }
     
     // Bottom instructions
-    if (deviceChanged) {
+    if (deviceChanged || modeChanged) {
         M5.Lcd.drawLine(0, screenHeight - 12, screenWidth, screenHeight - 12, DARKGREY);
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(DARKGREY, BLACK);
