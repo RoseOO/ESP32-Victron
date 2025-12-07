@@ -188,11 +188,28 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // Note: SmartShunt uses 15 bytes, while Solar Controller and DC-DC use 16 bytes
     
     // Determine minimum required bytes based on device type
-    size_t minPayloadBytes = (device.type == DEVICE_SMART_SHUNT) ? 15 : 16;
+    size_t minPayloadBytes;
+    if (device.type == DEVICE_SMART_SHUNT) {
+        minPayloadBytes = SMART_SHUNT_PAYLOAD_SIZE;
+    } else if (device.type == DEVICE_SMART_SOLAR) {
+        minPayloadBytes = SOLAR_CONTROLLER_PAYLOAD_SIZE;
+    } else if (device.type == DEVICE_DCDC_CONVERTER) {
+        minPayloadBytes = DCDC_CONVERTER_PAYLOAD_SIZE;
+    } else {
+        // Unknown device types will use TLV parsing, no minimum size check needed
+        minPayloadBytes = 0;
+    }
     
-    if (length < payloadStart + minPayloadBytes) {
-        Serial.printf("Warning: Insufficient data for fixed structure parsing (%d bytes, need %d)\n", 
+    // Validate we have enough data before proceeding to device-specific parsing
+    // If insufficient, log error and return early to prevent buffer overruns
+    if (minPayloadBytes > 0 && length < payloadStart + minPayloadBytes) {
+        device.errorMessage = "Insufficient data for device type";
+        Serial.printf("ERROR: Insufficient data for fixed structure parsing (%d bytes, need %d)\n", 
                      length, payloadStart + minPayloadBytes);
+        if (decryptedBuffer) {
+            delete[] decryptedBuffer;
+        }
+        return false;
     }
     
     // Point to the fixed structure payload (size varies by device type)
@@ -485,8 +502,8 @@ uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
 // Parse SmartShunt data (15-byte fixed structure)
 // Based on VBM.cpp from reference implementation
 void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device) {
-    if (length < 15) {
-        Serial.printf("SmartShunt: Insufficient data (%d bytes, need 15)\n", length);
+    if (length < SMART_SHUNT_PAYLOAD_SIZE) {
+        Serial.printf("SmartShunt: Insufficient data (%d bytes, need %d)\n", length, SMART_SHUNT_PAYLOAD_SIZE);
         return;
     }
     
@@ -564,8 +581,8 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
 // Parse Solar Controller data (16-byte fixed structure)
 // Based on VSC.cpp from reference implementation
 void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device) {
-    if (length < 16) {
-        Serial.printf("SolarController: Insufficient data (%d bytes, need 16)\n", length);
+    if (length < SOLAR_CONTROLLER_PAYLOAD_SIZE) {
+        Serial.printf("SolarController: Insufficient data (%d bytes, need %d)\n", length, SOLAR_CONTROLLER_PAYLOAD_SIZE);
         return;
     }
     
@@ -623,8 +640,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
 // This is a best-guess implementation as the reference doesn't include DC-DC specific code
 // We'll try to extract basic parameters similar to solar controller
 void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device) {
-    if (length < 16) {
-        Serial.printf("DCDC: Insufficient data (%d bytes, need 16)\n", length);
+    if (length < DCDC_CONVERTER_PAYLOAD_SIZE) {
+        Serial.printf("DCDC: Insufficient data (%d bytes, need %d)\n", length, DCDC_CONVERTER_PAYLOAD_SIZE);
         return;
     }
     

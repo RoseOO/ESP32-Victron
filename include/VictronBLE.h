@@ -9,6 +9,11 @@
 // Victron BLE Service UUID
 #define VICTRON_MANUFACTURER_ID 0x02E1
 
+// Fixed payload sizes for different device types
+#define SMART_SHUNT_PAYLOAD_SIZE 15
+#define SOLAR_CONTROLLER_PAYLOAD_SIZE 16
+#define DCDC_CONVERTER_PAYLOAD_SIZE 16
+
 // Device Types
 enum VictronDeviceType {
     DEVICE_UNKNOWN = 0,
