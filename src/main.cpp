@@ -954,9 +954,16 @@ void drawDisplay() {
         
         M5.Lcd.setTextSize(1);
         // Calculate page numbers for display
-        // We scroll one item at a time, but show which "page" of content we're viewing
-        // The page number reflects which page contains the first visible item
-        // Current page is based on which page the first visible item belongs to
+        // Note: We scroll one item at a time (not page-by-page), but display page numbers
+        // The page number indicates which "page" the first visible item belongs to
+        // 
+        // Example with 7 items and 3 items/page:
+        //   scrollOffset 0-2 → Page 1 (items 0-2 are part of page 1)
+        //   scrollOffset 3-5 → Page 2 (items 3-5 are part of page 2)
+        //   scrollOffset 6   → Page 3 (item 6 is part of page 3)
+        //
+        // This means during smooth scrolling, you might see "Page 1" even when items
+        // from page 2 are partially visible, which is expected behavior for item-based scrolling
         int currentPage = (verticalScrollOffset / maxItemsVisible) + 1;
         // Total pages: ceiling division to show all items
         int totalPages = (dataItemCount + maxItemsVisible - 1) / maxItemsVisible;
