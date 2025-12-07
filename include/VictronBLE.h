@@ -113,7 +113,7 @@ struct VictronDeviceData {
     // States
     int deviceState;
     int alarmState;
-    int offReason;
+    uint32_t offReason;         // 32-bit off reason code for DC-DC converters
     
     unsigned long lastUpdate;
     bool dataValid;
@@ -236,6 +236,12 @@ public:
     int getDeviceCount();
     void setRetainLastData(bool retain);
     bool getRetainLastData() const;
+    
+    // Helper functions to convert codes to human-readable strings
+    static String deviceStateToString(int state);
+    static String chargerErrorToString(int error);
+    static String offReasonToString(uint32_t offReason);
+    static String alarmReasonToString(uint16_t alarm);
 };
 
 #endif // VICTRON_BLE_H

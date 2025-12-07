@@ -312,6 +312,7 @@ void WebConfigServer::handleGetLiveData(AsyncWebServerRequest *request) {
         json += "\"deviceState\":" + String(device->deviceState) + ",";
         json += "\"chargerError\":" + String(device->chargerError) + ",";
         json += "\"alarmState\":" + String(device->alarmState) + ",";
+        json += "\"offReason\":" + String(device->offReason) + ",";
         json += "\"acOutVoltage\":" + String(device->acOutVoltage, 2) + ",";
         json += "\"acOutCurrent\":" + String(device->acOutCurrent, 2) + ",";
         json += "\"acOutPower\":" + String(device->acOutPower, 1) + ",";

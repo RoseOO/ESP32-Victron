@@ -477,6 +477,11 @@ void drawDisplay() {
     }
     if (device->hasInputVoltage) dataItemCount++;
     if (device->hasOutputVoltage) dataItemCount++;
+    // Add DC-DC specific fields
+    if (device->type == DEVICE_DCDC_CONVERTER) {
+        if (device->deviceState != 0 && device->deviceState != 0xFF) dataItemCount++;  // State
+        if (device->offReason != 0) dataItemCount++;  // Off reason
+    }
     
     // Calculate if we need vertical scrolling
     int totalContentHeight = dataItemCount * lineSpacing;
@@ -817,6 +822,51 @@ void drawDisplay() {
         nextItem();
     }
     
+    // DC-DC Converter state and off reason
+    if (device->type == DEVICE_DCDC_CONVERTER) {
+        // Show device state if available
+        if (device->deviceState != 0 && device->deviceState != 0xFF) {
+            if (shouldRenderItem()) {
+                M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+                M5.Lcd.setTextColor(GREEN, BLACK);
+                M5.Lcd.setCursor(5, y);
+                M5.Lcd.print("State:");
+                
+                if (deviceChanged) {
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    M5.Lcd.setTextSize(1);  // Use small font for state text
+                    M5.Lcd.setTextColor(WHITE, BLACK);
+                    M5.Lcd.setCursor(valueColumnX, y);
+                    String stateStr = VictronBLE::deviceStateToString(device->deviceState);
+                    if (stateStr.length() > 12) stateStr = stateStr.substring(0, 12);
+                    M5.Lcd.print(stateStr);
+                }
+            }
+            nextItem();
+        }
+        
+        // Show off reason if device is off
+        if (device->offReason != 0) {
+            if (shouldRenderItem()) {
+                M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+                M5.Lcd.setTextColor(YELLOW, BLACK);
+                M5.Lcd.setCursor(5, y);
+                M5.Lcd.print("Off:");
+                
+                if (deviceChanged) {
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+                    M5.Lcd.setTextSize(1);  // Use small font for reason text
+                    M5.Lcd.setTextColor(YELLOW, BLACK);
+                    M5.Lcd.setCursor(valueColumnX, y);
+                    String reasonStr = VictronBLE::offReasonToString(device->offReason);
+                    if (reasonStr.length() > 12) reasonStr = reasonStr.substring(0, 12);
+                    M5.Lcd.print(reasonStr);
+                }
+            }
+            nextItem();
+        }
+    }
+    
     // Draw bottom instructions (only on device change to reduce flicker)
     if (deviceChanged) {
         M5.Lcd.drawLine(0, bottomY, screenWidth, bottomY, DARKGREY);
@@ -903,6 +953,7 @@ void drawLargeDisplay() {
     static float lastCurrent = -999.0;
     static float lastSOC = -999.0;
     static bool lastDataValid = false;
+    static bool lastHasSOC = false;  // Track if SOC was available in previous render
     
     // Reset cache on device change
     if (deviceChanged) {
@@ -910,6 +961,13 @@ void drawLargeDisplay() {
         lastCurrent = -999.0;
         lastSOC = -999.0;
         lastDataValid = false;
+        lastHasSOC = false;
+    }
+    
+    // Detect if SOC status changed (became available or unavailable)
+    bool socStatusChanged = (device->hasSOC != lastHasSOC);
+    if (socStatusChanged) {
+        lastHasSOC = device->hasSOC;
     }
     
     // Device name header (small font)
@@ -975,12 +1033,17 @@ void drawLargeDisplay() {
     
     // Large Battery SOC display (if available)
     if (device->hasSOC) {
+        // Clear entire SOC area when SOC becomes available for first time
+        if (socStatusChanged) {
+            M5.Lcd.fillRect(5, y, screenWidth - 10, 50, BLACK);
+        }
+        
         M5.Lcd.setTextSize(1);
         M5.Lcd.setTextColor(GREEN, BLACK);
         M5.Lcd.setCursor(5, y);
         M5.Lcd.print("BATTERY SOC");
         
-        if (deviceChanged || device->batterySOC != lastSOC) {
+        if (deviceChanged || socStatusChanged || device->batterySOC != lastSOC) {
             M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
             M5.Lcd.setTextSize(3);
             uint16_t color = WHITE;
@@ -998,7 +1061,9 @@ void drawLargeDisplay() {
         }
     } else {
         // If no SOC available, show a message
-        if (deviceChanged) {
+        // Clear entire SOC area when SOC becomes unavailable
+        if (deviceChanged || socStatusChanged) {
+            M5.Lcd.fillRect(5, y, screenWidth - 10, 50, BLACK);
             M5.Lcd.setTextSize(1);
             M5.Lcd.setTextColor(DARKGREY, BLACK);
             M5.Lcd.setCursor(5, y);
@@ -1036,6 +1101,7 @@ void loop() {
             lastUserInteraction = currentTime;  // Reset timeout
             webConfigMode = !webConfigMode;
             largeDisplayMode = false;  // Exit large mode when entering web config
+            M5.Lcd.fillScreen(BLACK);  // Full screen refresh when toggling web config mode
             drawDisplay();
             longPressHandled = true;
         }
@@ -1092,6 +1158,7 @@ void loop() {
         if (deviceAddresses.empty()) {
             // If no devices found, toggle web config display
             webConfigMode = !webConfigMode;
+            M5.Lcd.fillScreen(BLACK);  // Full screen refresh when toggling web config mode
             drawDisplay();
         } else if (largeDisplayMode) {
             // In large display mode: exit it
@@ -1102,10 +1169,12 @@ void loop() {
             // Normal mode: cycle through devices
             currentDeviceIndex = (currentDeviceIndex + 1) % deviceAddresses.size();
             lastDeviceSwitch = currentTime;  // Reset auto-scroll timer when manually switching
+            M5.Lcd.fillScreen(BLACK);  // Full screen refresh when switching devices
             drawDisplay();
         } else {
             // Config mode: go back to normal mode
             webConfigMode = false;
+            M5.Lcd.fillScreen(BLACK);  // Full screen refresh when exiting web config mode
             drawDisplay();
         }
     }
@@ -1159,6 +1228,11 @@ void loop() {
                 }
                 if (device->hasInputVoltage) dataItemCount++;
                 if (device->hasOutputVoltage) dataItemCount++;
+                // Add DC-DC specific fields
+                if (device->type == DEVICE_DCDC_CONVERTER) {
+                    if (device->deviceState != 0 && device->deviceState != 0xFF) dataItemCount++;
+                    if (device->offReason != 0) dataItemCount++;
+                }
                 
                 // Calculate if scrolling is needed
                 const int lineSpacing = 15 * lcdFontSize;

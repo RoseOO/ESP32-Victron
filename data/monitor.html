@@ -332,6 +332,25 @@
                                 dataRows += `<div class="data-row"><span class="data-label">Output:</span><span class="data-value">${d.outputVoltage.toFixed(2)} V</span></div>`;
                             }
                             
+                            // DC-DC state and off reason
+                            if (d.type === 5 && d.deviceState !== undefined && d.deviceState !== 0 && d.deviceState !== 255) {
+                                const states = {0: 'Off', 1: 'Low Power', 2: 'Fault', 3: 'Bulk', 4: 'Absorption', 5: 'Float', 249: 'Active'};
+                                const stateStr = states[d.deviceState] || `State ${d.deviceState}`;
+                                dataRows += `<div class="data-row"><span class="data-label">State:</span><span class="data-value">${stateStr}</span></div>`;
+                            }
+                            
+                            if (d.type === 5 && d.offReason !== undefined && d.offReason !== 0) {
+                                let reasons = [];
+                                if (d.offReason & 0x01) reasons.push("No input");
+                                if (d.offReason & 0x02) reasons.push("Switch off");
+                                if (d.offReason & 0x04) reasons.push("Register off");
+                                if (d.offReason & 0x08) reasons.push("Remote");
+                                if (d.offReason & 0x10) reasons.push("Protection");
+                                if (d.offReason & 0x40) reasons.push("BMS");
+                                const reasonStr = reasons.join(", ") || `0x${d.offReason.toString(16)}`;
+                                dataRows += `<div class="data-row"><span class="data-label">Off Reason:</span><span class="data-value">${reasonStr}</span></div>`;
+                            }
+                            
                             if (!dataRows) {
                                 dataRows = '<div class="data-row"><span class="data-label">Status:</span><span class="data-value">Waiting for data...</span></div>';
                             }
