@@ -108,12 +108,9 @@ void WebConfigServer::startServer() {
     server = new AsyncWebServer(80);
     
     // Note: For POST endpoints with application/x-www-form-urlencoded content,
-    // we do NOT use a body handler. ESPAsyncWebServer's automatic form parser
-    // works best without a custom body handler. The library will automatically
-    // parse form data and make parameters available via request->getParam("name", true).
-    //
-    // If a custom body handler is needed for raw JSON or other content types,
-    // it should be added per-endpoint, not as a shared handler.
+    // we add empty body handlers. This ensures ESPAsyncWebServer properly processes
+    // the request body and makes form parameters available via request->getParam("name", true).
+    // The body handler itself is empty because the library handles the parsing automatically.
     
     // Serve main page
     server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -161,25 +158,43 @@ void WebConfigServer::startServer() {
         handleGetWiFiConfig(request);
     });
     
-    server->on("/api/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        handleSetWiFiConfig(request);
-    });
+    server->on("/api/wifi", HTTP_POST, 
+        [this](AsyncWebServerRequest *request) {
+            handleSetWiFiConfig(request);
+        },
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            // Body handler for form data parsing
+        }
+    );
     
     server->on("/api/mqtt", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetMQTTConfig(request);
     });
     
-    server->on("/api/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        handleSetMQTTConfig(request);
-    });
+    server->on("/api/mqtt", HTTP_POST, 
+        [this](AsyncWebServerRequest *request) {
+            handleSetMQTTConfig(request);
+        },
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            // Body handler for form data parsing
+        }
+    );
     
     server->on("/api/buzzer", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetBuzzerConfig(request);
     });
     
-    server->on("/api/buzzer", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        handleSetBuzzerConfig(request);
-    });
+    server->on("/api/buzzer", HTTP_POST, 
+        [this](AsyncWebServerRequest *request) {
+            handleSetBuzzerConfig(request);
+        },
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            // Body handler for form data parsing
+        }
+    );
     
     server->on("/api/data-retention", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetDataRetention(request);
