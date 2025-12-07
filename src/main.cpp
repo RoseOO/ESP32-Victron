@@ -436,14 +436,14 @@ void drawDisplay() {
     
     // Track if this is a new device to force full redraw and reset scroll
     static String lastDeviceAddress = "";
-    static int lastVerticalScrollOffset = -1;
+    static int lastVerticalScrollOffset = 0;
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
     bool scrollChanged = (lastVerticalScrollOffset != verticalScrollOffset);
     if (deviceChanged) {
         M5.Lcd.fillScreen(BLACK);
         lastDeviceAddress = deviceAddresses[currentDeviceIndex];
         verticalScrollOffset = 0;  // Reset vertical scroll on device change
-        lastVerticalScrollOffset = 0;
+        lastVerticalScrollOffset = verticalScrollOffset;
     } else if (scrollChanged) {
         // Clear the data area when scroll position changes
         M5.Lcd.fillRect(0, dataStartY, screenWidth, dataAreaHeight, BLACK);
