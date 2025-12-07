@@ -14,6 +14,11 @@
 #define SOLAR_CONTROLLER_PAYLOAD_SIZE 16
 #define DCDC_CONVERTER_PAYLOAD_SIZE 16
 
+// Voltage sanity check threshold (in volts)
+// Packets with voltage readings exceeding this value will be discarded
+// as they indicate clearly incorrect data
+#define MAX_VALID_VOLTAGE 30.0f
+
 // Device Types
 enum VictronDeviceType {
     DEVICE_UNKNOWN = 0,
@@ -194,6 +199,11 @@ private:
     int32_t extractSigned22(const uint8_t* data, int startByte);
     uint32_t extractUnsigned20(const uint8_t* data, int startByte);
     uint16_t extractUnsigned10(const uint8_t* data, int startByte);
+    
+    // Helper function to validate voltage readings
+    // Returns true if voltage is valid, false otherwise
+    // If invalid, sets device.dataValid to false and logs an error
+    bool validateVoltage(float voltage, const char* source, VictronDeviceData& device);
     
     // Helper function to normalize MAC addresses for comparison
     // Removes colons and converts to lowercase

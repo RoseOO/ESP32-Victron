@@ -504,6 +504,24 @@ uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
            ((data[startByte + 1] & 0x30) << 4);    // bits 8-9 (bits 4-5 of byte shifted to 8-9)
 }
 
+// Validate voltage reading with sanity check
+// Returns true if voltage is valid (<=MAX_VALID_VOLTAGE), false if invalid
+// If invalid, sets device.dataValid to false and logs an error
+bool VictronBLE::validateVoltage(float voltage, const char* source, VictronDeviceData& device) {
+    // Sanity check: discard packet if voltage > MAX_VALID_VOLTAGE (clearly incorrect data)
+    if (voltage > MAX_VALID_VOLTAGE) {
+        device.dataValid = false;
+        // Build error message using snprintf for better performance
+        char errorMsg[100];
+        snprintf(errorMsg, sizeof(errorMsg), "Invalid voltage reading (>%.0fV) - packet discarded", MAX_VALID_VOLTAGE);
+        device.errorMessage = errorMsg;
+        Serial.printf("ERROR: Invalid voltage %.2fV detected in %s packet (threshold: %.0fV) - discarding\n", 
+                     voltage, source, MAX_VALID_VOLTAGE);
+        return false;
+    }
+    return true;
+}
+
 // Parse SmartShunt data (15-byte fixed structure, but handle partial data)
 // Based on VBM.cpp from reference implementation
 void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device) {
@@ -522,7 +540,11 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
     if (length >= 4) {
         int16_t battMv10 = extractSigned16(output, 2);
         if (battMv10 != 0x7FFF) {
-            device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+            float voltage = battMv10 / 100.0f;  // convert 10mV to V
+            if (!validateVoltage(voltage, "SmartShunt", device)) {
+                return;
+            }
+            device.voltage = voltage;
             device.hasVoltage = true;
         }
     }
@@ -615,7 +637,11 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
     if (length >= 4) {
         int16_t battMv10 = extractSigned16(output, 2);
         if (battMv10 != 0x7FFF) {
-            device.voltage = battMv10 / 100.0f;  // convert 10mV to V
+            float voltage = battMv10 / 100.0f;  // convert 10mV to V
+            if (!validateVoltage(voltage, "SolarController", device)) {
+                return;
+            }
+            device.voltage = voltage;
             device.hasVoltage = true;
         }
     }
@@ -686,7 +712,11 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
     if (length >= 4) {
         int16_t inputMv10 = extractSigned16(output, 2);
         if (inputMv10 != 0x7FFF) {
-            device.inputVoltage = inputMv10 / 100.0f;
+            float inputVoltage = inputMv10 / 100.0f;
+            if (!validateVoltage(inputVoltage, "DCDC input", device)) {
+                return;
+            }
+            device.inputVoltage = inputVoltage;
             device.hasInputVoltage = true;
         }
     }
@@ -695,7 +725,11 @@ void VictronBLE::parseDCDCConverterData(const uint8_t* output, size_t length, Vi
     if (length >= 6) {
         int16_t outputMv10 = extractSigned16(output, 4);
         if (outputMv10 != 0x7FFF) {
-            device.outputVoltage = outputMv10 / 100.0f;
+            float outputVoltage = outputMv10 / 100.0f;
+            if (!validateVoltage(outputVoltage, "DCDC output", device)) {
+                return;
+            }
+            device.outputVoltage = outputVoltage;
             device.hasOutputVoltage = true;
             // Also set as general voltage for display
             device.voltage = device.outputVoltage;
@@ -742,8 +776,14 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
             case BATTERY_VOLTAGE:
             case SOLAR_CHARGER_VOLTAGE:
             case CHARGER_VOLTAGE:
-                device.voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
-                device.hasVoltage = true;
+                {
+                    float voltage = decodeValue(recordData, recordLen, 0.01); // 10mV resolution
+                    if (!validateVoltage(voltage, "TLV", device)) {
+                        return;
+                    }
+                    device.voltage = voltage;
+                    device.hasVoltage = true;
+                }
                 break;
                 
             case BATTERY_CURRENT:
