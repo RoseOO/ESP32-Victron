@@ -70,14 +70,14 @@ void VictronBLE::scan(int duration) {
                                            : mfgData.length();
                     memcpy(devData.rawManufacturerData, mfgData.data(), devData.rawDataLength);
                     
-                    // Extract model ID if available (bytes 3-4, little-endian)
-                    if (mfgData.length() >= 5) {
-                        devData.modelId = (uint8_t)mfgData[3] | ((uint8_t)mfgData[4] << 8);
+                    // Extract model ID if available (bytes 2-3, little-endian)
+                    if (mfgData.length() >= 4) {
+                        devData.modelId = (uint8_t)mfgData[2] | ((uint8_t)mfgData[3] << 8);
                     }
                     
-                    // Check if encrypted
-                    if (mfgData.length() >= 6) {
-                        devData.encrypted = (mfgData[5] != 0x00);
+                    // Check if encrypted (byte 4 indicates readout type/encryption)
+                    if (mfgData.length() >= 5) {
+                        devData.encrypted = (mfgData[4] != 0x00);
                     }
                     
                     // Parse manufacturer data with encryption key if available
@@ -123,20 +123,30 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
 }
 
 bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey) {
-    // Victron BLE advertisement format:
-    // [0-1]: Manufacturer ID (0x02E1)
-    // [2]: Record Type
-    // [3-4]: Model ID
-    // [5]: Encryption key (0x00 for instant readout)
-    // [6+]: Data records
+    // Victron BLE advertisement format (based on victron-ble Python library):
+    // [0-1]: Manufacturer ID (0x02E1) - little-endian
+    // [2-3]: Model ID - little-endian
+    // [4]: Readout type / Encryption indicator (0x00 for instant readout, non-zero for encrypted)
+    // For encrypted packets:
+    //   [5-6]: IV/Counter (nonce) - little-endian
+    //   [7]: Encryption key match byte (first byte, should match first byte of key)
+    //   [8+]: Encrypted data records
+    // For unencrypted packets:
+    //   [5+]: Data records (unencrypted)
     
-    if (length < 6) return false;
+    if (length < 5) return false;
     
     // Clear previous parsed records
     device.parsedRecords.clear();
     
-    // Check if data is encrypted (byte 5 != 0x00)
-    bool isEncrypted = (data[5] != 0x00);
+    // Check if data is encrypted (byte 4 != 0x00)
+    bool isEncrypted = (data[4] != 0x00);
+    
+    // For encrypted data, we need at least 8 bytes (header + IV + key check byte)
+    if (isEncrypted && length < 8) {
+        Serial.printf("ERROR: Encrypted packet too short: %d bytes (need at least 8)\n", length);
+        return false;
+    }
     
     const uint8_t* dataToProcess = data;
     uint8_t* decryptedBuffer = nullptr;
@@ -164,8 +174,10 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     device.dataValid = true;
     device.errorMessage = "";  // Clear any previous error message
     
-    // Start parsing from byte 6 (after header)
-    size_t pos = 6;
+    // Determine where to start parsing records
+    // For encrypted data: records start at byte 8 (after header + key check byte)
+    // For unencrypted data: records start at byte 5 (after manufacturer ID, model ID, and readout type)
+    size_t pos = isEncrypted ? 8 : 5;
     
     while (pos < length) {
         if (pos + 1 >= length) break;
@@ -371,13 +383,12 @@ static int hexCharToValue(char c) {
 
 bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key) {
     // Victron uses AES-128-CTR encryption for BLE data
-    // Packet structure:
-    // [0-1]: Manufacturer ID (0x02E1)
-    // [2]: Record Type
-    // [3-4]: Model ID
-    // [5]: Data Counter LSB (nonce)
-    // [6]: Data Counter MSB (nonce)
-    // [7]: Encryption Key Match byte
+    // Packet structure (based on victron-ble Python library):
+    // [0-1]: Manufacturer ID (0x02E1) - little-endian
+    // [2-3]: Model ID - little-endian
+    // [4]: Readout type / Encryption indicator
+    // [5-6]: IV/Counter (nonce) - little-endian
+    // [7]: Encryption Key Match byte (first byte of encrypted data, should match first byte of key)
     // [8+]: Encrypted payload
     
     if (key.isEmpty() || length < 8) {
