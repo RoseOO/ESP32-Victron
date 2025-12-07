@@ -614,15 +614,16 @@ void WebConfigServer::handleSetBuzzerConfig(AsyncWebServerRequest *request) {
     String enabledStr = request->getParam("enabled", true)->value();
     String thresholdStr = request->getParam("threshold", true)->value();
     
-    buzzerEnabled = (enabledStr == "true");
-    buzzerThreshold = thresholdStr.toFloat();
+    float newThreshold = thresholdStr.toFloat();
     
     // Validate threshold
-    if (buzzerThreshold < 0 || buzzerThreshold > 100) {
-        buzzerThreshold = 10.0;  // Reset to default
+    if (newThreshold < 0 || newThreshold > 100) {
         request->send(400, "application/json", "{\"success\":false,\"error\":\"Threshold must be between 0 and 100\"}");
         return;
     }
+    
+    buzzerEnabled = (enabledStr == "true");
+    buzzerThreshold = newThreshold;
     
     saveBuzzerConfig();
     

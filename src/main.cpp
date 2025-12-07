@@ -23,6 +23,7 @@ unsigned long lastButtonPressTime = 0;  // For debouncing
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
 const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
+const unsigned long LONG_PRESS_DURATION = 1000;  // Long press duration in ms
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
@@ -33,7 +34,10 @@ bool buzzerEnabled = true;
 float buzzerThreshold = 10.0;  // Default 10% battery SOC
 bool buzzerAlarmActive = false;
 unsigned long lastBuzzerCheck = 0;
+unsigned long lastBuzzerBeep = 0;
 const unsigned long BUZZER_CHECK_INTERVAL = 5000;  // Check every 5 seconds
+const unsigned long BUZZER_BEEP_INTERVAL = 200;  // Beep duration/interval in ms
+int buzzerBeepCount = 0;
 
 // Forward declarations
 void updateDeviceList();
@@ -41,6 +45,7 @@ void drawDisplay();
 void loadBuzzerConfig();
 void saveBuzzerConfig();
 void checkBatteryAlarm();
+void handleBuzzerBeep();
 
 void loadBuzzerConfig() {
     buzzerPreferences.begin("buzzer", true);  // read-only
@@ -61,6 +66,7 @@ void saveBuzzerConfig() {
 void checkBatteryAlarm() {
     if (!buzzerEnabled) {
         buzzerAlarmActive = false;
+        buzzerBeepCount = 0;
         return;
     }
     
@@ -69,7 +75,7 @@ void checkBatteryAlarm() {
     for (const auto& addr : deviceAddresses) {
         VictronDeviceData* device = victron->getDevice(addr);
         if (device && device->hasSOC && device->dataValid) {
-            if (device->batterySOC <= buzzerThreshold && device->batterySOC >= 0) {
+            if (device->batterySOC < buzzerThreshold && device->batterySOC >= 0) {
                 alarmCondition = true;
                 Serial.printf("Battery alarm triggered: %s at %.1f%% (threshold: %.1f%%)\n", 
                     device->name.c_str(), device->batterySOC, buzzerThreshold);
@@ -81,14 +87,30 @@ void checkBatteryAlarm() {
     // Trigger alarm if condition met and not already active
     if (alarmCondition && !buzzerAlarmActive) {
         buzzerAlarmActive = true;
-        // Beep pattern: 3 short beeps
-        for (int i = 0; i < 3; i++) {
-            M5.Speaker.tone(2000, 200);  // 2kHz tone for 200ms
-            delay(300);
-        }
-        Serial.println("Battery alarm beep triggered");
+        buzzerBeepCount = 0;  // Start beep sequence
+        Serial.println("Battery alarm activated");
     } else if (!alarmCondition) {
         buzzerAlarmActive = false;
+        buzzerBeepCount = 0;
+    }
+}
+
+void handleBuzzerBeep() {
+    if (!buzzerAlarmActive || buzzerBeepCount >= 6) {
+        return;  // Not active or already completed 3 beeps (6 states: on/off x 3)
+    }
+    
+    unsigned long currentTime = millis();
+    
+    // Non-blocking beep pattern: 200ms on, 100ms off, repeat 3 times
+    if (currentTime - lastBuzzerBeep > BUZZER_BEEP_INTERVAL) {
+        if (buzzerBeepCount % 2 == 0) {
+            // Even count: start beep
+            M5.Speaker.tone(2000, BUZZER_BEEP_INTERVAL);
+            Serial.printf("Beep %d/3\n", (buzzerBeepCount / 2) + 1);
+        }
+        buzzerBeepCount++;
+        lastBuzzerBeep = currentTime;
     }
 }
 
@@ -402,7 +424,7 @@ void loop() {
     
     // Long press button A: toggle web config display (check this first to prevent short press from firing)
     static bool longPressHandled = false;
-    if (M5.BtnA.pressedFor(1000) && !longPressHandled) {
+    if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {
         if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
             lastButtonPressTime = currentTime;
             webConfigMode = !webConfigMode;
@@ -462,6 +484,9 @@ void loop() {
         checkBatteryAlarm();
         lastBuzzerCheck = currentTime;
     }
+    
+    // Handle buzzer beeps (non-blocking)
+    handleBuzzerBeep();
     
     // Handle MQTT publishing
     mqttPublisher->loop();
