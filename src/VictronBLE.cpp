@@ -1,5 +1,6 @@
 #include "VictronBLE.h"
 #include <cctype>
+#include <aes/esp_aes.h>
 
 // BLE Scan Callback - used for real-time device discovery logging
 // Note: Actual device processing happens in the scan() method
@@ -150,7 +151,7 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         // Allocate buffer for decrypted data
         decryptedBuffer = new uint8_t[length];
         if (!decryptData(data, length, decryptedBuffer, encryptionKey)) {
-            device.errorMessage = "Decryption failed. Encryption is not fully implemented. Please enable 'Instant Readout' mode.";
+            device.errorMessage = "Decryption failed. Please verify the encryption key is correct.";
             delete[] decryptedBuffer;
             Serial.printf("Failed to decrypt data for %s\n", device.address.c_str());
             return false;
@@ -355,34 +356,135 @@ void VictronBLE::clearEncryptionKeys() {
     encryptionKeys.clear();
 }
 
+// Helper function to convert a hex character to its numeric value
+// Returns -1 for invalid characters
+static int hexCharToValue(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+        return 10 + (c - 'a');
+    } else if (c >= 'A' && c <= 'F') {
+        return 10 + (c - 'A');
+    }
+    return -1;
+}
+
 bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key) {
-    // NOTE: Victron uses AES-128-CTR encryption for BLE data
-    // This is a placeholder implementation that copies the data as-is
-    // A full implementation would require:
-    // 1. Convert hex key string to 16-byte array
-    // 2. Extract IV/nonce from the encrypted payload
-    // 3. Use mbedtls or similar library for AES-128-CTR decryption
-    //
-    // Return value:
-    // - true: Decryption successful, decryptedData contains valid data
-    // - false: Decryption failed, decryptedData is in undefined state
+    // Victron uses AES-128-CTR encryption for BLE data
+    // Packet structure:
+    // [0-1]: Manufacturer ID (0x02E1)
+    // [2]: Record Type
+    // [3-4]: Model ID
+    // [5]: Data Counter LSB (nonce)
+    // [6]: Data Counter MSB (nonce)
+    // [7]: Encryption Key Match byte
+    // [8+]: Encrypted payload
     
-    if (key.isEmpty() || length < 6) {
+    if (key.isEmpty() || length < 8) {
+        Serial.println("ERROR: Invalid encryption key or data length");
         return false;
     }
     
-    // TODO: Implement proper AES-128-CTR decryption
-    // For now, this is a placeholder that indicates encryption support is present
-    // but not fully implemented. Users with encrypted devices will need instant readout mode.
+    // Validate key format (should be 32 hex characters = 16 bytes)
+    if (key.length() != 32) {
+        Serial.printf("ERROR: Encryption key must be 32 hex characters, got %d\n", key.length());
+        return false;
+    }
     
-    Serial.println("WARNING: Encryption decryption not fully implemented yet.");
-    Serial.println("Please enable 'Instant Readout' mode in VictronConnect app.");
+    // Convert hex string key to 16-byte array with validation
+    // Using direct character access for efficiency (no String allocations)
+    uint8_t keyBytes[16];
+    for (int i = 0; i < 16; i++) {
+        char highNibble = key.charAt(i * 2);
+        char lowNibble = key.charAt(i * 2 + 1);
+        
+        // Validate and convert high nibble
+        int highVal = hexCharToValue(highNibble);
+        if (highVal < 0) {
+            Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", highNibble, i * 2);
+            return false;
+        }
+        
+        // Validate and convert low nibble
+        int lowVal = hexCharToValue(lowNibble);
+        if (lowVal < 0) {
+            Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", lowNibble, i * 2 + 1);
+            return false;
+        }
+        
+        // Combine nibbles into byte
+        keyBytes[i] = (highVal << 4) | lowVal;
+    }
     
-    // Copy header (first 6 bytes) as-is
-    memcpy(decryptedData, encryptedData, 6);
+    // Verify the encryption key match byte (byte 7 should match keyBytes[0])
+    // This is a critical validation - if it doesn't match, the key is almost certainly wrong
+    if (encryptedData[7] != keyBytes[0]) {
+        Serial.println("==========================================");
+        Serial.printf("ERROR: Encryption key match byte mismatch!\n");
+        Serial.printf("  Expected: 0x%02X (first byte of your key)\n", keyBytes[0]);
+        Serial.printf("  Got:      0x%02X (byte 7 of BLE packet)\n", encryptedData[7]);
+        Serial.println("  This indicates an INCORRECT encryption key.");
+        Serial.println("  Please verify the key from VictronConnect app.");
+        Serial.println("==========================================");
+        return false;
+    }
     
-    // For encrypted data, we would decrypt the payload here
-    // Currently returning false to indicate decryption failed
-    // decryptedData buffer is left in partially initialized state (header only)
-    return false;
+    // Extract nonce/counter from bytes 5 and 6
+    uint8_t dataCounterLSB = encryptedData[5];
+    uint8_t dataCounterMSB = encryptedData[6];
+    
+    // Copy header (first 8 bytes) as-is - they are not encrypted
+    memcpy(decryptedData, encryptedData, 8);
+    
+    // Decrypt the payload starting from byte 8
+    size_t encryptedPayloadLength = length - 8;
+    if (encryptedPayloadLength == 0) {
+        Serial.println("WARNING: No encrypted payload to decrypt");
+        return true; // No payload to decrypt, but not an error
+    }
+    
+    // Initialize AES context
+    esp_aes_context aesCtx;
+    esp_aes_init(&aesCtx);
+    
+    // Set encryption key (128 bits)
+    int status = esp_aes_setkey(&aesCtx, keyBytes, 128);
+    if (status != 0) {
+        Serial.printf("ERROR: Failed to set AES key (status %d)\n", status);
+        esp_aes_free(&aesCtx);
+        return false;
+    }
+    
+    // Prepare nonce/counter for AES-CTR mode
+    // The counter is initialized with data counter bytes (from BLE packet) and remaining bytes set to zero
+    // Format: [dataCounterLSB, dataCounterMSB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    // This follows the Victron BLE AES-CTR specification
+    uint8_t nonceCounter[16];
+    memset(nonceCounter, 0, sizeof(nonceCounter));  // Initialize all 16 bytes to zero
+    nonceCounter[0] = dataCounterLSB;
+    nonceCounter[1] = dataCounterMSB;
+    // Bytes 2-15 remain zero as per AES-CTR spec
+    
+    uint8_t streamBlock[16];
+    memset(streamBlock, 0, sizeof(streamBlock));
+    size_t ncOffset = 0;
+    
+    // Decrypt using AES-128-CTR
+    status = esp_aes_crypt_ctr(&aesCtx, 
+                               encryptedPayloadLength, 
+                               &ncOffset, 
+                               nonceCounter, 
+                               streamBlock, 
+                               &encryptedData[8],        // source: encrypted payload
+                               &decryptedData[8]);       // destination: decrypted payload
+    
+    esp_aes_free(&aesCtx);
+    
+    if (status != 0) {
+        Serial.printf("ERROR: AES-CTR decryption failed (status %d)\n", status);
+        return false;
+    }
+    
+    Serial.printf("Successfully decrypted %d bytes of data\n", encryptedPayloadLength);
+    return true;
 }

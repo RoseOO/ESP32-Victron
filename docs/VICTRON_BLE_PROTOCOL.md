@@ -22,9 +22,22 @@ Offset | Length | Description
 
 Victron devices support two modes:
 - **Instant Readout** (key = 0x00): Data is unencrypted and can be read by anyone
-- **Encrypted** (key != 0x00): Data is encrypted with a device-specific key
+- **Encrypted** (key != 0x00): Data is encrypted with a device-specific AES-128-CTR key
 
-This implementation only supports Instant Readout mode for simplicity.
+This implementation supports both modes. For encrypted devices:
+1. Obtain the encryption key from the VictronConnect app (Settings → Product Info → Show Encryption Data)
+2. Enter the 32-character hex key in the web configuration interface for the device
+3. The system will automatically decrypt the BLE advertisement data using AES-128-CTR
+
+### Encryption Technical Details
+
+Encrypted BLE advertisements use AES-128-CTR (Counter mode) encryption:
+- **Key**: 128-bit (16 bytes) device-specific key, provided as 32 hex characters
+- **Nonce/Counter**: Bytes 5-6 of the manufacturer data (LSB, MSB)
+- **Key Match Byte**: Byte 7 should match the first byte of the encryption key
+- **Encrypted Payload**: Starts at byte 8 and continues to the end of the packet
+
+The implementation uses the ESP32's built-in `esp_aes` library for hardware-accelerated AES decryption.
 
 ## Data Records Format
 

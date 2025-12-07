@@ -82,7 +82,8 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
 
 This project decodes Victron's BLE advertisement packets which contain:
 - Manufacturer ID: 0x02E1 (Victron Energy)
-- Instant readout data (unencrypted mode)
+- Support for both instant readout (unencrypted) and encrypted modes
+- AES-128-CTR decryption for encrypted devices
 - Various record types for voltage, current, power, SOC, temperature, etc.
 
 ## Software Requirements

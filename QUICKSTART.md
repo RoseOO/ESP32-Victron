@@ -17,11 +17,11 @@ Get your M5StickC PLUS2 displaying Victron data in under 10 minutes!
 2. Using the VictronConnect app on your phone:
    - Connect to your device
    - Go to Settings → Product Info
-   - Enable **"Instant Readout"** (if not already enabled)
-   - Or ensure no PIN code is set for Bluetooth
+   - **For unencrypted mode**: Enable **"Instant Readout"** (if not already enabled)
+   - **For encrypted mode**: Note down the encryption key (see web configuration below)
 3. Close the VictronConnect app
 
-> **Note**: The device must be in "Instant Readout" mode for this monitor to work without pairing.
+> **Note**: This monitor supports both instant readout (unencrypted) and encrypted modes. For encrypted devices, you'll need to configure the encryption key via the web interface.
 
 ### Step 2: Choose Your Development Environment
 
@@ -159,12 +159,14 @@ The web interface allows you to:
 ### Device is encrypted / Cannot read data
 
 **Solutions**:
-- Option 1: Enable "Instant Readout" mode in VictronConnect app
-- Option 2: Use web interface to add encryption key:
-  1. Get encryption key from VictronConnect app (Settings → BLE)
-  2. Connect to web interface
-  3. Add device with MAC address and encryption key
-- **Note**: Full encryption support coming in future update
+- Option 1: Enable "Instant Readout" mode in VictronConnect app (unencrypted)
+- Option 2: Use web interface to configure encryption key (recommended):
+  1. Get encryption key from VictronConnect app (Settings → Product Info → Show Encryption Data)
+  2. Copy the 32-character hex key
+  3. Connect to web interface (http://192.168.4.1 or device IP)
+  4. Add device with MAC address and paste the encryption key
+  5. The device will automatically decrypt the BLE data using AES-128-CTR
+- **Note**: Full AES-128-CTR encryption is now supported!
 
 ### "Upload failed" / "Could not connect to ESP32"
 

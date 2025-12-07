@@ -190,19 +190,26 @@ The current implementation:
 
 ### Encryption Not Working
 
-**Note**: Full AES-128-CTR decryption is planned but not yet fully implemented.
+Full AES-128-CTR decryption is now implemented and supported!
 
-Current status:
-- Infrastructure for encryption keys is in place
-- Keys can be stored and retrieved
-- Decryption placeholder warns users
+If you experience issues with encrypted devices:
 
-**Workaround**: Enable "Instant Readout" mode in VictronConnect app:
-1. Open VictronConnect app
-2. Connect to your device
-3. Go to Settings → BLE
-4. Enable "Instant Readout" or disable encryption
-5. Leave encryption key field empty in web interface
+1. **Verify the encryption key is correct**:
+   - Get the key from VictronConnect app (Settings → Product Info → Show Encryption Data)
+   - Ensure it's exactly 32 hexadecimal characters
+   - Copy/paste carefully to avoid typos
+
+2. **Check the key match byte**:
+   - The device will log a warning if the encryption key match byte (byte 7 of the BLE packet) doesn't match the first byte of your key
+   - This typically indicates an incorrect encryption key
+
+3. **Alternative - Use Instant Readout mode**:
+   If you prefer unencrypted data:
+   - Open VictronConnect app
+   - Connect to your device
+   - Go to Settings → BLE
+   - Enable "Instant Readout" mode
+   - Leave encryption key field empty in web interface
 
 ## API Reference
 
@@ -307,7 +314,7 @@ Planned features for future releases:
 
 - Web configuration interface (implemented)
 - Encryption key storage (implemented)
-- Full AES-128-CTR decryption (in progress)
+- Full AES-128-CTR decryption (implemented)
 - HTTPS support (planned)
 - Authentication/login system (planned)
 - OTA firmware updates via web interface (planned)

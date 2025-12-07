@@ -7,12 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Full AES-128-CTR Decryption**: Complete implementation of encrypted device support
+  - Decrypt Victron BLE advertisement data using AES-128-CTR mode
+  - Uses ESP32's built-in `esp_aes` library for hardware-accelerated decryption
+  - Validates encryption key format (32 hex characters = 16 bytes)
+  - Verifies encryption key match byte for correctness
+  - Extracts nonce/counter from BLE packet bytes 5-6
+  - Properly decrypts payload starting from byte 8
+  - Detailed error logging for troubleshooting
+
+### Changed
+- **Error Messages**: Updated decryption failure messages to reflect actual encryption support
+  - Changed from "Encryption is not fully implemented" to "Decryption failed. Please verify the encryption key is correct."
+  - Added specific error messages for invalid key format and decryption failures
+  - Enhanced debug logging with encryption status and warnings
+
 ### Fixed
 - **Encryption Key Address Matching**: Fixed issue where encryption keys were not being matched to devices
   - Added MAC address normalization to handle addresses with or without colons
   - Addresses are now normalized (colons removed, lowercase) before storing/comparing encryption keys
   - Fixes issue where devices remained encrypted despite adding encryption keys via web interface
   - Addresses can now be entered in any format: `AA:BB:CC:DD:EE:FF`, `aa:bb:cc:dd:ee:ff`, or `aabbccddeeff`
+
+### Documentation
+- Updated `VICTRON_BLE_PROTOCOL.md` with encryption technical details
+- Updated `WEB_CONFIGURATION.md` to reflect that encryption is now fully supported
+- Added AES-CTR implementation details and troubleshooting tips
 
 ## [1.3.1] - 2025-12-06
 
