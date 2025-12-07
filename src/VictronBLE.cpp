@@ -1,4 +1,5 @@
 #include "VictronBLE.h"
+#include <cctype>
 
 // BLE Scan Callback - used for real-time device discovery logging
 // Note: Actual device processing happens in the scan() method
@@ -317,24 +318,32 @@ int VictronBLE::getDeviceCount() {
 }
 
 String VictronBLE::normalizeAddress(const String& address) {
+    // Normalize MAC address for consistent comparison
+    // Removes colons and converts to lowercase
+    // Example: "E5:78:04:B9:4D:55" -> "e57804b94d55"
     String normalized = "";
     normalized.reserve(12);  // Pre-allocate for MAC address without colons (12 hex chars)
     for (size_t i = 0; i < address.length(); i++) {
         char c = address[i];
         if (c != ':') {
-            normalized += (char)tolower(c);
+            normalized += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         }
     }
     return normalized;
 }
 
 void VictronBLE::setEncryptionKey(const String& address, const String& key) {
+    // Note: Encryption keys are stored using normalized addresses (no colons, lowercase)
+    // while devices in the devices map use BLE format addresses (with colons).
+    // This allows users to enter addresses in any format when configuring encryption keys.
     String normalizedAddr = normalizeAddress(address);
     encryptionKeys[normalizedAddr] = key;
     Serial.printf("Set encryption key for device %s (normalized: %s)\n", address.c_str(), normalizedAddr.c_str());
 }
 
 String VictronBLE::getEncryptionKey(const String& address) {
+    // Normalize the BLE address before looking up the encryption key
+    // This ensures the lookup works regardless of the address format used
     String normalizedAddr = normalizeAddress(address);
     if (encryptionKeys.find(normalizedAddr) != encryptionKeys.end()) {
         return encryptionKeys[normalizedAddr];
