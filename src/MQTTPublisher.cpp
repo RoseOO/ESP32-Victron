@@ -119,6 +119,16 @@ void MQTTPublisher::publishDiscovery(VictronDeviceData* device) {
         {"Power", "W", "power", "measurement", device->hasPower},
         {"Battery SOC", "%", "battery", "measurement", device->hasSOC},
         {"Temperature", "°C", "temperature", "measurement", device->hasTemperature},
+        {"Consumed Ah", "Ah", "energy", "total_increasing", device->consumedAh > 0},
+        {"Time to Go", "min", "", "measurement", device->timeToGo > 0 && device->timeToGo < 65535},
+        {"Aux Voltage", "V", "voltage", "measurement", device->auxMode == 0 && device->auxVoltage > 0},
+        {"Mid Voltage", "V", "voltage", "measurement", device->auxMode == 1 && device->midVoltage > 0},
+        {"Yield Today", "kWh", "energy", "total_increasing", device->yieldToday > 0},
+        {"PV Power", "W", "power", "measurement", device->pvPower > 0},
+        {"Load Current", "A", "current", "measurement", device->loadCurrent > 0},
+        {"Device State", "", "", "measurement", device->deviceState >= 0},
+        {"Charger Error", "", "", "measurement", device->chargerError > 0},
+        {"Alarm State", "", "", "measurement", device->alarmState > 0},
         {"AC Output Voltage", "V", "voltage", "measurement", device->hasAcOut},
         {"AC Output Power", "W", "power", "measurement", device->hasAcOut},
         {"Input Voltage", "V", "voltage", "measurement", device->hasInputVoltage},
@@ -205,6 +215,59 @@ void MQTTPublisher::publishDeviceData(VictronDeviceData* device) {
         mqttClient.publish(topic.c_str(), String(device->temperature, 1).c_str());
     }
     
+    // SmartShunt specific fields
+    if (device->consumedAh > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Consumed Ah");
+        mqttClient.publish(topic.c_str(), String(device->consumedAh, 1).c_str());
+    }
+    
+    if (device->timeToGo > 0 && device->timeToGo < 65535) {
+        String topic = basePath + "/" + sanitizeTopicName("Time to Go");
+        mqttClient.publish(topic.c_str(), String(device->timeToGo).c_str());
+    }
+    
+    if (device->auxMode == 0 && device->auxVoltage > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Aux Voltage");
+        mqttClient.publish(topic.c_str(), String(device->auxVoltage, 2).c_str());
+    }
+    
+    if (device->auxMode == 1 && device->midVoltage > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Mid Voltage");
+        mqttClient.publish(topic.c_str(), String(device->midVoltage, 2).c_str());
+    }
+    
+    // Solar Controller specific fields
+    if (device->yieldToday > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Yield Today");
+        mqttClient.publish(topic.c_str(), String(device->yieldToday, 2).c_str());
+    }
+    
+    if (device->pvPower > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("PV Power");
+        mqttClient.publish(topic.c_str(), String(device->pvPower, 0).c_str());
+    }
+    
+    if (device->loadCurrent > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Load Current");
+        mqttClient.publish(topic.c_str(), String(device->loadCurrent, 2).c_str());
+    }
+    
+    if (device->deviceState >= 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Device State");
+        mqttClient.publish(topic.c_str(), String(device->deviceState).c_str());
+    }
+    
+    if (device->chargerError > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Charger Error");
+        mqttClient.publish(topic.c_str(), String(device->chargerError).c_str());
+    }
+    
+    if (device->alarmState > 0) {
+        String topic = basePath + "/" + sanitizeTopicName("Alarm State");
+        mqttClient.publish(topic.c_str(), String(device->alarmState).c_str());
+    }
+    
+    // Inverter specific fields
     if (device->hasAcOut) {
         String topic1 = basePath + "/" + sanitizeTopicName("AC Output Voltage");
         mqttClient.publish(topic1.c_str(), String(device->acOutVoltage, 2).c_str());
