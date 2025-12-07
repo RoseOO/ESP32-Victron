@@ -43,7 +43,7 @@ The web interface displays:
 
 #### Adding a Device
 
-1. Click **"➕ Add Device"** button
+1. Click **"Add Device"** button
 2. Fill in the form:
    - **Device Name**: Friendly name (e.g., "Solar MPPT")
    - **BLE MAC Address**: Device MAC from VictronConnect app (e.g., `AA:BB:CC:DD:EE:FF`)
@@ -78,7 +78,7 @@ To get your device's BLE MAC address and encryption key:
 
 #### WiFi Configuration
 
-1. Click **"⚙️ Configure WiFi"**
+1. Click **"Configure WiFi"**
 2. Choose mode:
    - **Access Point**: Device creates its own WiFi network
    - **Station**: Device connects to your WiFi network
@@ -143,10 +143,10 @@ The web config screen shows:
 ### Web Interface Security
 
 The current implementation:
-- ✅ No default admin credentials required
-- ✅ Configuration changes require explicit save actions
-- ⚠️ No HTTPS (uses HTTP)
-- ⚠️ No authentication mechanism
+- No default admin credentials required
+- Configuration changes require explicit save actions
+- No HTTPS (uses HTTP)
+- No authentication mechanism
 
 **Recommendations:**
 - Use only on trusted networks
@@ -305,16 +305,16 @@ server = new AsyncWebServer(8080);  // Use port 8080
 
 Planned features for future releases:
 
-- ✅ Web configuration interface (implemented)
-- ✅ Encryption key storage (implemented)
-- 🔄 Full AES-128-CTR decryption (in progress)
-- ⏳ HTTPS support
-- ⏳ Authentication/login system
-- ⏳ OTA firmware updates via web interface
-- ⏳ Real-time data viewing in web interface
-- ⏳ Historical data graphs
-- ⏳ MQTT integration configuration
-- ⏳ Mobile-responsive UI improvements
+- Web configuration interface (implemented)
+- Encryption key storage (implemented)
+- Full AES-128-CTR decryption (in progress)
+- HTTPS support (planned)
+- Authentication/login system (planned)
+- OTA firmware updates via web interface (planned)
+- Real-time data viewing in web interface (planned)
+- Historical data graphs (planned)
+-  MQTT integration configuration
+-  Mobile-responsive UI improvements
 
 ## Support
 

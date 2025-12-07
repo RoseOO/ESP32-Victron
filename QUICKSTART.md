@@ -4,10 +4,10 @@ Get your M5StickC PLUS2 displaying Victron data in under 10 minutes!
 
 ## What You Need
 
-✅ M5StickC PLUS2 board  
-✅ USB-C cable  
-✅ Computer with Arduino IDE or PlatformIO  
-✅ Victron device with Bluetooth (Smart Shunt, Smart Solar, or Blue Smart Charger)  
+- M5StickC PLUS2 board  
+- USB-C cable  
+- Computer with Arduino IDE or PlatformIO  
+- Victron device with Bluetooth (Smart Shunt, Smart Solar, or Blue Smart Charger)  
 
 ## 5-Step Setup
 
@@ -27,7 +27,7 @@ Get your M5StickC PLUS2 displaying Victron data in under 10 minutes!
 
 Pick one:
 
-#### Option A: Arduino IDE (Easiest) ⭐ Recommended for Beginners
+#### Option A: Arduino IDE (Easiest) - Recommended for Beginners
 
 1. Download and install [Arduino IDE](https://www.arduino.cc/en/software)
 2. Add ESP32 board support:
@@ -93,7 +93,7 @@ Pick one:
    - Password: `victron123`
    - Open browser and go to: `http://192.168.4.1`
    - You'll see the web configuration page
-   - Click **"➕ Add Device"** to add your Victron devices with encryption keys
+   - Click **"Add Device"** to add your Victron devices with encryption keys
 
 3. **First Scan**:
    - After 5 seconds, the device will scan for Victron devices
@@ -147,7 +147,7 @@ The web interface allows you to:
 
 ## Common Issues & Solutions
 
-### ❌ "No devices found!"
+### "No devices found!"
 
 **Solutions**:
 - Ensure Victron device is ON and close to M5StickC (within 5 meters)
@@ -156,7 +156,7 @@ The web interface allows you to:
 - Try restarting both devices
 - **New**: Use web interface to manually add device with MAC address
 
-### ❌ Device is encrypted / Cannot read data
+### Device is encrypted / Cannot read data
 
 **Solutions**:
 - Option 1: Enable "Instant Readout" mode in VictronConnect app
@@ -166,7 +166,7 @@ The web interface allows you to:
   3. Add device with MAC address and encryption key
 - **Note**: Full encryption support coming in future update
 
-### ❌ "Upload failed" / "Could not connect to ESP32"
+### "Upload failed" / "Could not connect to ESP32"
 
 **Solutions**:
 - Check USB cable (must be a data cable, not charge-only)
@@ -174,7 +174,7 @@ The web interface allows you to:
 - Try different USB port
 - Lower upload speed: Tools → Upload Speed → 115200
 
-### ❌ Data shows "-- V" or "-- A"
+### Data shows "-- V" or "-- A"
 
 **Solutions**:
 - Device may be in standby (not connected to load/battery)
@@ -182,7 +182,7 @@ The web interface allows you to:
 - Wait for next scan cycle (30 seconds)
 - Ensure device is actively measuring
 
-### ❌ Display is blank
+### Display is blank
 
 **Solutions**:
 - Long press power button to wake up
@@ -233,9 +233,9 @@ If you have multiple M5StickC PLUS2 devices, you can:
 
 ### Battery % Color Coding
 
-- 🟢 **Green** (>50%): Good
-- 🟡 **Yellow** (20-50%): Medium
-- 🔴 **Red** (<20%): Low - charge soon!
+- **Green** (>50%): Good
+- **Yellow** (20-50%): Medium
+- **Red** (<20%): Low - charge soon!
 
 ## Tips for Best Results
 
@@ -247,11 +247,11 @@ If you have multiple M5StickC PLUS2 devices, you can:
 
 ## Getting Help
 
-- 📖 [Full Documentation](README.md)
-- 🔧 [Hardware Setup Guide](docs/HARDWARE_SETUP.md)
-- 📡 [Protocol Details](docs/VICTRON_BLE_PROTOCOL.md)
-- ⚙️ [Configuration Examples](examples/CONFIGURATION.md)
-- 🐛 [Open an Issue](https://github.com/RoseOO/ESP32-Victron/issues)
+- [Full Documentation](README.md)
+- [Hardware Setup Guide](docs/HARDWARE_SETUP.md)
+- [Protocol Details](docs/VICTRON_BLE_PROTOCOL.md)
+- [Configuration Examples](examples/CONFIGURATION.md)
+- [Open an Issue](https://github.com/RoseOO/ESP32-Victron/issues)
 
 ## Success Checklist
 
@@ -262,7 +262,7 @@ If you have multiple M5StickC PLUS2 devices, you can:
 - [ ] M5 button switches between devices (if you have multiple)
 - [ ] Display updates approximately every second
 
-✅ If all boxes are checked, you're good to go! Enjoy monitoring your Victron devices!
+If all boxes are checked, you're good to go! Enjoy monitoring your Victron devices!
 
 ## What's Happening Behind the Scenes?
 
@@ -278,4 +278,4 @@ If you have multiple M5StickC PLUS2 devices, you can:
 **Skill Level**: Beginner to Intermediate  
 **Cost**: ~$40 (M5StickC PLUS2) + Victron device (already owned)
 
-Happy Monitoring! 🔋⚡📊
+Happy Monitoring!

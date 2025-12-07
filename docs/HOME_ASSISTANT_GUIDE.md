@@ -27,7 +27,7 @@ If you haven't already set up an MQTT broker:
 ### Step 2: Configure MQTT in ESP32-Victron
 
 1. Access the web interface at `http://{device-ip}`
-2. Click **"⚙️ Configure MQTT"** in the Home Assistant / MQTT section
+2. Click **"Configure MQTT"** in the Home Assistant / MQTT section
 3. Enter your settings:
    - **Enable MQTT**: Set to "Enabled"
    - **MQTT Broker Address**: Your Home Assistant IP (e.g., `192.168.1.100`)
@@ -41,7 +41,7 @@ If you haven't already set up an MQTT broker:
 
 ### Step 3: Verify Connection
 
-1. Check the web interface - Connection status should show "✓ Connected"
+1. Check the web interface - Connection status should show "Connected"
 2. In Home Assistant, go to **Settings** → **Devices & Services** → **MQTT**
 3. Click **"Configure"** → **"Listen to a topic"**
 4. Enter topic: `victron/#`
@@ -189,7 +189,7 @@ If your MQTT broker requires authentication:
 ### Device Not Connecting to MQTT
 
 **Check connection status:**
-1. Web interface shows "✗ Disconnected"
+1. Web interface shows "Disconnected"
 2. Verify broker IP address is correct
 3. Check broker is running: `mosquitto -v` or check Home Assistant add-on
 4. Verify username/password if using authentication
