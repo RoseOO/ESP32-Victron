@@ -22,13 +22,16 @@ unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
 unsigned long lastDeviceSwitch = 0;  // Track when device was last switched
 unsigned long lastButtonPressTime = 0;  // For debouncing
+unsigned long lastVerticalScroll = 0;  // Track when vertical scroll last occurred
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
 const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 const unsigned long LONG_PRESS_DURATION = 1000;  // Long press duration in ms
+const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every 3 seconds
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
+int verticalScrollOffset = 0;  // Current vertical scroll position
 
 // Buzzer alarm configuration
 Preferences buzzerPreferences;
@@ -404,12 +407,13 @@ void drawDisplay() {
         return;
     }
     
-    // Track if this is a new device to force full redraw
+    // Track if this is a new device to force full redraw and reset scroll
     static String lastDeviceAddress = "";
     bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
     if (deviceChanged) {
         M5.Lcd.fillScreen(BLACK);
         lastDeviceAddress = deviceAddresses[currentDeviceIndex];
+        verticalScrollOffset = 0;  // Reset vertical scroll on device change
     }
     
     // Calculate layout constants - use fixed sizes for headers regardless of lcdFontSize setting
@@ -419,6 +423,33 @@ void drawDisplay() {
     const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
     const int bottomY = (lcdOrientation == "portrait") ? 220 : 110;
     const int maxChars = (lcdOrientation == "portrait") ? 18 : 26;
+    const int dataStartY = 30;  // Where data section starts
+    const int dataAreaHeight = bottomY - dataStartY;  // Available height for data
+    
+    // Count total data items to determine if scrolling is needed
+    int dataItemCount = 2;  // Voltage and Current are always shown
+    if (device->hasPower) dataItemCount++;
+    if (device->hasSOC) dataItemCount++;
+    if (device->hasTemperature) dataItemCount++;
+    if (device->hasAcOut) {
+        dataItemCount++;
+        if (device->acOutCurrent != 0 || device->acOutPower != 0) dataItemCount++;
+    }
+    if (device->hasInputVoltage) dataItemCount++;
+    if (device->hasOutputVoltage) dataItemCount++;
+    
+    // Calculate if we need vertical scrolling
+    int totalContentHeight = dataItemCount * lineSpacing;
+    bool needsVerticalScroll = (totalContentHeight > dataAreaHeight);
+    int maxScrollOffset = needsVerticalScroll ? (dataItemCount - (dataAreaHeight / lineSpacing)) : 0;
+    
+    // Clamp scroll offset
+    if (verticalScrollOffset > maxScrollOffset) {
+        verticalScrollOffset = maxScrollOffset;
+    }
+    if (verticalScrollOffset < 0) {
+        verticalScrollOffset = 0;
+    }
     
     // Device name header - always use fixed title font size
     if (deviceChanged) {
@@ -664,6 +695,30 @@ void drawDisplay() {
         M5.Lcd.setTextColor(DARKGREY, BLACK);
         M5.Lcd.setCursor(5, bottomY + 8);
         M5.Lcd.print("M5: Next Device");
+    }
+    
+    // Show scroll indicator if content overflows
+    if (needsVerticalScroll) {
+        // Draw scroll indicator arrows on the right side
+        int indicatorX = screenWidth - 10;
+        int indicatorY = bottomY - 15;
+        
+        // Clear previous indicator
+        M5.Lcd.fillRect(indicatorX - 5, indicatorY - 10, 15, 20, BLACK);
+        
+        M5.Lcd.setTextSize(1);
+        if (verticalScrollOffset > 0) {
+            // Show up arrow if we can scroll up
+            M5.Lcd.setTextColor(YELLOW, BLACK);
+            M5.Lcd.setCursor(indicatorX, indicatorY - 8);
+            M5.Lcd.print("^");
+        }
+        if (verticalScrollOffset < maxScrollOffset) {
+            // Show down arrow if we can scroll down
+            M5.Lcd.setTextColor(YELLOW, BLACK);
+            M5.Lcd.setCursor(indicatorX, indicatorY + 4);
+            M5.Lcd.print("v");
+        }
     }
     
     // Signal strength indicator (update always as RSSI changes frequently)
