@@ -68,9 +68,9 @@ void VictronBLE::scan(int duration) {
                                            : mfgData.length();
                     memcpy(devData.rawManufacturerData, mfgData.data(), devData.rawDataLength);
                     
-                    // Extract model ID if available
+                    // Extract model ID if available (bytes 3-4, little-endian)
                     if (mfgData.length() >= 5) {
-                        devData.modelId = (uint8_t)mfgData[4] << 8 | (uint8_t)mfgData[3];
+                        devData.modelId = (uint8_t)mfgData[3] | ((uint8_t)mfgData[4] << 8);
                     }
                     
                     // Check if encrypted
