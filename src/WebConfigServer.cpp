@@ -300,15 +300,19 @@ void WebConfigServer::handleAddDevice(AsyncWebServerRequest *request) {
 
 void WebConfigServer::handleUpdateDevice(AsyncWebServerRequest *request) {
     if (request->hasParam("address", true) && request->hasParam("name", true)) {
-        String address = request->getParam("address", true)->value();
+        String newAddress = request->getParam("address", true)->value();
         String name = request->getParam("name", true)->value();
         String key = request->hasParam("encryptionKey", true) ? 
                      request->getParam("encryptionKey", true)->value() : "";
         bool enabled = request->hasParam("enabled", true) ? 
                        request->getParam("enabled", true)->value() == "true" : true;
         
-        DeviceConfig config(name, address, key, enabled);
-        updateDeviceConfig(address, config);
+        // Use oldAddress if provided (for MAC address updates), otherwise use new address
+        String lookupAddress = request->hasParam("oldAddress", true) ? 
+                              request->getParam("oldAddress", true)->value() : newAddress;
+        
+        DeviceConfig config(name, newAddress, key, enabled);
+        updateDeviceConfig(lookupAddress, config);
         
         request->send(200, "application/json", "{\"success\":true}");
     } else {
