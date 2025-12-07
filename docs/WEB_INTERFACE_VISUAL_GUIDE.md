@@ -34,7 +34,7 @@ When you first access the web interface, you see:
 │   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  Note: Note: Add your Victron devices with their │
+│  Note: Add your Victron devices with their │
 │  BLE MAC addresses. If your device uses       │
 │  encryption, enter the 32-character           │
 │  encryption key from the VictronConnect app.  │
@@ -172,7 +172,7 @@ When no devices are configured:
 │   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  Note: Note: Add your Victron devices...         │
+│  Note: Add your Victron devices...         │
 │                                               │
 │  ┌─────────────────────────────────────────┐ │
 │  │                                         │ │

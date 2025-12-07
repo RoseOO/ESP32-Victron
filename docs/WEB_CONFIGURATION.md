@@ -313,8 +313,8 @@ Planned features for future releases:
 - OTA firmware updates via web interface (planned)
 - Real-time data viewing in web interface (planned)
 - Historical data graphs (planned)
--  MQTT integration configuration
--  Mobile-responsive UI improvements
+- MQTT integration configuration (implemented)
+- Mobile-responsive UI improvements (implemented)
 
 ## Support
 
