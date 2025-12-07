@@ -51,7 +51,7 @@ When you first access the web interface, you see:
 │  │                         [Edit] [Delete] │ │
 │  └─────────────────────────────────────────┘ │
 │                                               │
-│  [ Add Device]                               │
+│  [Add Device]                               │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
@@ -65,7 +65,7 @@ When you first access the web interface, you see:
 │  Note: Current Mode: Access Point                │
 │     IP Address: 192.168.4.1                   │
 │                                               │
-│  [ Configure WiFi]                           │
+│  [Configure WiFi]                           │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
@@ -182,7 +182,7 @@ When no devices are configured:
 │  │                                         │ │
 │  └─────────────────────────────────────────┘ │
 │                                               │
-│  [ Add Device]                               │
+│  [Add Device]                               │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
