@@ -444,9 +444,17 @@ uint16_t VictronBLE::extractUnsigned16(const uint8_t* data, int byteIndex) {
 // Battery current for SmartShunt: bytes 8-10
 int32_t VictronBLE::extractSigned22(const uint8_t* data, int startByte) {
     bool neg = (data[startByte + 2] & 0x80) >> 7;  // bit 21 (sign bit)
-    int32_t value = ((data[startByte] & 0xFC) >> 2) + ((data[startByte + 1] & 0x03) << 6) |  // bits 0-7
-                   (((data[startByte + 1] & 0xFC) >> 2) + ((data[startByte + 2] & 0x03) << 6) << 8) |  // bits 8-15
-                   (((data[startByte + 2] & 0x7C) >> 2) << 16);  // bits 16-20
+    
+    // Extract the 21-bit unsigned value spread across the bytes
+    // Byte 0 (8): bits 2-7 contain bits 0-5 of value
+    // Byte 1 (9): bits 0-1 contain bits 6-7, bits 2-7 contain bits 8-13
+    // Byte 2 (10): bits 0-1 contain bits 14-15, bits 2-6 contain bits 16-20
+    int32_t value = ((data[startByte] & 0xFC) >> 2) |                           // bits 0-5
+                   (((data[startByte + 1] & 0x03) << 6)) |                       // bits 6-7
+                   (((data[startByte + 1] & 0xFC) >> 2) << 8) |                  // bits 8-13
+                   (((data[startByte + 2] & 0x03) << 14)) |                      // bits 14-15
+                   (((data[startByte + 2] & 0x7C) >> 2) << 16);                  // bits 16-20
+    
     if (neg) value = value - 2097152;  // 2's complement = val - 2^(b-1), b=22
     return value;
 }
@@ -462,9 +470,12 @@ uint32_t VictronBLE::extractUnsigned20(const uint8_t* data, int startByte) {
 // Extract unsigned 10-bit value (spread across 2 bytes)
 // State of Charge for SmartShunt: bytes 13-14 (upper 4 bits of byte 13, bits 0-5 of byte 14)
 uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
-    return ((data[startByte] & 0xF0) >> 4) |    // bits 0-3
-           ((data[startByte + 1] & 0x0F) << 4) |  // bits 4-7
-           ((data[startByte + 1] & 0x30) << 4);   // bits 8-9
+    // Byte 13: bits 4-7 contain bits 0-3 of value (extract with 0xF0, shift right by 4)
+    // Byte 14: bits 0-3 contain bits 4-7 of value (extract with 0x0F, shift left by 4)
+    // Byte 14: bits 4-5 contain bits 8-9 of value (extract with 0x30, shift left by 4 more)
+    return ((data[startByte] & 0xF0) >> 4) |       // bits 0-3
+           ((data[startByte + 1] & 0x0F) << 4) |   // bits 4-7
+           ((data[startByte + 1] & 0x30) << 4);    // bits 8-9 (bits 4-5 of byte shifted to 8-9)
 }
 
 // Parse SmartShunt data (16-byte fixed structure)
