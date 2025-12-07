@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <Preferences.h>
+#include <map>
 #include "VictronBLE.h"
 
 // MQTT Configuration structure
@@ -39,7 +40,7 @@ private:
     
     unsigned long lastPublishTime;
     unsigned long lastReconnectAttempt;
-    bool discoveryPublished;
+    std::map<String, bool> discoveryPublished;  // Track discovery per device address
     
     void reconnect();
     void publishDiscovery(VictronDeviceData* device);
