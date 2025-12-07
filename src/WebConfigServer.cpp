@@ -614,9 +614,28 @@ void WebConfigServer::handleSetBuzzerConfig(AsyncWebServerRequest *request) {
     String enabledStr = request->getParam("enabled", true)->value();
     String thresholdStr = request->getParam("threshold", true)->value();
     
+    // Validate threshold string is numeric
+    bool validNumber = true;
+    if (thresholdStr.length() == 0) {
+        validNumber = false;
+    } else {
+        for (size_t i = 0; i < thresholdStr.length(); i++) {
+            char c = thresholdStr[i];
+            if (c != '.' && c != '-' && (c < '0' || c > '9')) {
+                validNumber = false;
+                break;
+            }
+        }
+    }
+    
+    if (!validNumber) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Invalid threshold value\"}");
+        return;
+    }
+    
     float newThreshold = thresholdStr.toFloat();
     
-    // Validate threshold
+    // Validate threshold range
     if (newThreshold < 0 || newThreshold > 100) {
         request->send(400, "application/json", "{\"success\":false,\"error\":\"Threshold must be between 0 and 100\"}");
         return;

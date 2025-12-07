@@ -37,7 +37,9 @@ unsigned long lastBuzzerCheck = 0;
 unsigned long lastBuzzerBeep = 0;
 const unsigned long BUZZER_CHECK_INTERVAL = 5000;  // Check every 5 seconds
 const unsigned long BUZZER_BEEP_INTERVAL = 200;  // Beep duration/interval in ms
+const int BUZZER_FREQUENCY = 2000;  // Buzzer frequency in Hz
 int buzzerBeepCount = 0;
+bool longPressHandled = false;  // For button long press detection
 
 // Forward declarations
 void updateDeviceList();
@@ -103,10 +105,10 @@ void handleBuzzerBeep() {
     unsigned long currentTime = millis();
     
     // Non-blocking beep pattern: 200ms on, 100ms off, repeat 3 times
-    if (currentTime - lastBuzzerBeep > BUZZER_BEEP_INTERVAL) {
+    if (currentTime - lastBuzzerBeep >= BUZZER_BEEP_INTERVAL) {
         if (buzzerBeepCount % 2 == 0) {
             // Even count: start beep
-            M5.Speaker.tone(2000, BUZZER_BEEP_INTERVAL);
+            M5.Speaker.tone(BUZZER_FREQUENCY, BUZZER_BEEP_INTERVAL);
             Serial.printf("Beep %d/3\n", (buzzerBeepCount / 2) + 1);
         }
         buzzerBeepCount++;
@@ -423,7 +425,6 @@ void loop() {
     unsigned long currentTime = millis();
     
     // Long press button A: toggle web config display (check this first to prevent short press from firing)
-    static bool longPressHandled = false;
     if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {
         if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
             lastButtonPressTime = currentTime;
