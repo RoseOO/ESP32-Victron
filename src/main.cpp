@@ -857,13 +857,19 @@ void drawDisplay() {
                 if (deviceChanged) {
                     String reasonStr = VictronBLE::offReasonToString(device->offReason);
                     
-                    // Calculate available width for text (right-aligned)
-                    const int availableWidth = screenWidth - valueColumnX - 5;  // 5 pixels margin
-                    const int charsPerLine = availableWidth / 6;  // Approx 6 pixels per char at font size 1
+                    // Constants for text wrapping calculations
+                    const int PIXELS_PER_CHAR = 6;  // Approx width per character at font size 1
+                    const int LINE_SPACING_PIXELS = 2;  // Vertical spacing between lines
+                    const int RIGHT_MARGIN = 5;  // Right margin in pixels
+                    const int MAX_WRAP_LINES = 3;  // Maximum number of lines for wrapped text
                     
-                    // Clear the entire area for wrapped text (up to 3 lines)
-                    const int maxLines = 3;
-                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * maxLines + (maxLines - 1) * 2, BLACK);
+                    // Calculate available width for text (right-aligned)
+                    const int availableWidth = screenWidth - valueColumnX - RIGHT_MARGIN;
+                    const int charsPerLine = availableWidth / PIXELS_PER_CHAR;
+                    
+                    // Clear the entire area for wrapped text
+                    M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 
+                                   FONT_HEIGHT_PIXELS * MAX_WRAP_LINES + (MAX_WRAP_LINES - 1) * LINE_SPACING_PIXELS, BLACK);
                     
                     M5.Lcd.setTextSize(1);  // Use small font for reason text
                     M5.Lcd.setTextColor(YELLOW, BLACK);
@@ -871,7 +877,7 @@ void drawDisplay() {
                     // Wrap text across multiple lines, keeping right-aligned
                     int currentLine = 0;
                     int startPos = 0;
-                    while (startPos < reasonStr.length() && currentLine < maxLines) {
+                    while (startPos < reasonStr.length() && currentLine < MAX_WRAP_LINES) {
                         String line;
                         
                         // Extract substring for this line
@@ -886,10 +892,10 @@ void drawDisplay() {
                             int breakPos = max(lastSpace, lastSemi);
                             
                             if (breakPos > startPos && breakPos <= endPos) {
-                                // Found a good break point
-                                line = reasonStr.substring(startPos, breakPos + 1);
-                                startPos = breakPos + 1;
-                                // Skip leading space on next line
+                                // Found a good break point - exclude the delimiter from the line
+                                line = reasonStr.substring(startPos, breakPos);
+                                startPos = breakPos + 1;  // Skip past the delimiter
+                                // Skip any additional leading spaces on next line
                                 while (startPos < reasonStr.length() && reasonStr.charAt(startPos) == ' ') {
                                     startPos++;
                                 }
@@ -901,11 +907,11 @@ void drawDisplay() {
                         }
                         
                         // Right-align the text
-                        int textWidth = line.length() * 6;  // Approx 6 pixels per char
-                        int xPos = screenWidth - textWidth - 5;  // 5 pixels right margin
+                        int textWidth = line.length() * PIXELS_PER_CHAR;
+                        int xPos = screenWidth - textWidth - RIGHT_MARGIN;
                         if (xPos < valueColumnX) xPos = valueColumnX;  // Don't go past left boundary
                         
-                        M5.Lcd.setCursor(xPos, y + currentLine * (FONT_HEIGHT_PIXELS + 2));
+                        M5.Lcd.setCursor(xPos, y + currentLine * (FONT_HEIGHT_PIXELS + LINE_SPACING_PIXELS));
                         M5.Lcd.print(line);
                         
                         currentLine++;
