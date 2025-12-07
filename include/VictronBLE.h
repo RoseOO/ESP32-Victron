@@ -195,6 +195,11 @@ private:
     uint32_t extractUnsigned20(const uint8_t* data, int startByte);
     uint16_t extractUnsigned10(const uint8_t* data, int startByte);
     
+    // Helper function to validate voltage readings
+    // Returns true if voltage is valid, false otherwise
+    // If invalid, sets device.dataValid to false and logs an error
+    bool validateVoltage(float voltage, const char* source, VictronDeviceData& device);
+    
     // Helper function to normalize MAC addresses for comparison
     // Removes colons and converts to lowercase
     String normalizeAddress(const String& address);
