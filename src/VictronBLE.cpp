@@ -798,11 +798,16 @@ void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDevice
     existingData.type = newData.type;
     existingData.rssi = newData.rssi;
     existingData.lastUpdate = newData.lastUpdate;
-    existingData.rawDataLength = newData.rawDataLength;
     existingData.manufacturerId = newData.manufacturerId;
     existingData.modelId = newData.modelId;
     existingData.encrypted = newData.encrypted;
-    memcpy(existingData.rawManufacturerData, newData.rawManufacturerData, newData.rawDataLength);
+    
+    // Safely copy raw data with bounds checking
+    existingData.rawDataLength = newData.rawDataLength > sizeof(existingData.rawManufacturerData) 
+                                 ? sizeof(existingData.rawManufacturerData) 
+                                 : newData.rawDataLength;
+    memcpy(existingData.rawManufacturerData, newData.rawManufacturerData, existingData.rawDataLength);
+    
     existingData.parsedRecords = newData.parsedRecords;
     
     // If new data is valid, update all the measurement fields
@@ -861,7 +866,9 @@ void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDevice
         }
         
         // Update all device-specific fields when data is valid
-        // These fields are always updated together as a complete set
+        // These fields don't have corresponding 'has' flags because they're always
+        // present in the data structure (even if zero/default). Since we're in the
+        // dataValid block, we know parsing succeeded and these values are meaningful.
         existingData.consumedAh = newData.consumedAh;
         existingData.timeToGo = newData.timeToGo;
         existingData.auxVoltage = newData.auxVoltage;
