@@ -238,47 +238,52 @@
                         list.innerHTML = '<div class="status"><p>No devices found. Scanning for Victron devices...</p></div>';
                     } else {
                         list.innerHTML = devices.map(d => {
+                            // Safely handle undefined values
+                            const deviceName = d.name || 'Unknown Device';
+                            const deviceType = d.typeName || 'Unknown';
+                            const rssi = d.rssi !== undefined ? d.rssi : 0;
+                            
                             let signalClass = 'signal-good';
-                            if (d.rssi < -80) signalClass = 'signal-poor';
-                            else if (d.rssi < -60) signalClass = 'signal-medium';
+                            if (rssi < -80) signalClass = 'signal-poor';
+                            else if (rssi < -60) signalClass = 'signal-medium';
                             
                             let dataRows = '';
                             
-                            if (d.hasVoltage) {
+                            if (d.hasVoltage && d.voltage !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">Voltage:</span><span class="data-value">${d.voltage.toFixed(2)} V</span></div>`;
                             }
                             
-                            if (d.hasCurrent) {
+                            if (d.hasCurrent && d.current !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">Current:</span><span class="data-value">${d.current.toFixed(2)} A</span></div>`;
                             }
                             
-                            if (d.hasPower) {
+                            if (d.hasPower && d.power !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">Power:</span><span class="data-value">${d.power.toFixed(1)} W</span></div>`;
                             }
                             
-                            if (d.hasSOC && d.batterySOC >= 0) {
+                            if (d.hasSOC && d.batterySOC !== undefined && d.batterySOC >= 0) {
                                 dataRows += `<div class="data-row"><span class="data-label">Battery SOC:</span><span class="data-value">${d.batterySOC.toFixed(1)} %</span></div>`;
                             }
                             
-                            if (d.hasTemperature && d.temperature > -200) {
+                            if (d.hasTemperature && d.temperature !== undefined && d.temperature > -200) {
                                 dataRows += `<div class="data-row"><span class="data-label">Temperature:</span><span class="data-value">${d.temperature.toFixed(1)} °C</span></div>`;
                             }
                             
                             // SmartShunt specific fields
-                            if (d.consumedAh && d.consumedAh > 0) {
+                            if (d.consumedAh !== undefined && d.consumedAh > 0) {
                                 dataRows += `<div class="data-row"><span class="data-label">Consumed Ah:</span><span class="data-value">${d.consumedAh.toFixed(1)} Ah</span></div>`;
                             }
                             
-                            if (d.timeToGo && d.timeToGo > 0 && d.timeToGo < 65535) {
+                            if (d.timeToGo !== undefined && d.timeToGo > 0 && d.timeToGo < 65535) {
                                 const hours = Math.floor(d.timeToGo / 60);
                                 const minutes = d.timeToGo % 60;
                                 dataRows += `<div class="data-row"><span class="data-label">Time to Go:</span><span class="data-value">${hours}h ${minutes}m</span></div>`;
                             }
                             
                             if (d.auxMode !== undefined && d.auxMode !== 3) {
-                                if (d.auxMode === 0 && d.auxVoltage) {
+                                if (d.auxMode === 0 && d.auxVoltage !== undefined) {
                                     dataRows += `<div class="data-row"><span class="data-label">Aux Voltage:</span><span class="data-value">${d.auxVoltage.toFixed(2)} V</span></div>`;
-                                } else if (d.auxMode === 1 && d.midVoltage) {
+                                } else if (d.auxMode === 1 && d.midVoltage !== undefined) {
                                     dataRows += `<div class="data-row"><span class="data-label">Mid Voltage:</span><span class="data-value">${d.midVoltage.toFixed(2)} V</span></div>`;
                                 }
                             }
@@ -311,19 +316,19 @@
                             }
                             
                             // Inverter specific fields
-                            if (d.hasAcOut) {
+                            if (d.hasAcOut && d.acOutVoltage !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">AC Output:</span><span class="data-value">${d.acOutVoltage.toFixed(1)} V</span></div>`;
-                                if (d.acOutPower > 0) {
+                                if (d.acOutPower !== undefined && d.acOutPower > 0) {
                                     dataRows += `<div class="data-row"><span class="data-label">AC Power:</span><span class="data-value">${d.acOutPower.toFixed(0)} W</span></div>`;
                                 }
                             }
                             
                             // DC-DC Converter specific fields
-                            if (d.hasInputVoltage) {
+                            if (d.hasInputVoltage && d.inputVoltage !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">Input:</span><span class="data-value">${d.inputVoltage.toFixed(2)} V</span></div>`;
                             }
                             
-                            if (d.hasOutputVoltage) {
+                            if (d.hasOutputVoltage && d.outputVoltage !== undefined) {
                                 dataRows += `<div class="data-row"><span class="data-label">Output:</span><span class="data-value">${d.outputVoltage.toFixed(2)} V</span></div>`;
                             }
                             
@@ -335,12 +340,12 @@
                                 <div class="device-card">
                                     <div class="device-header">
                                         <div>
-                                            <div class="device-name">${d.name}</div>
-                                            <div class="device-type">${d.typeName}</div>
+                                            <div class="device-name">${deviceName}</div>
+                                            <div class="device-type">${deviceType}</div>
                                         </div>
                                         <div class="signal">
                                             <div class="signal-icon ${signalClass}"></div>
-                                            <span style="font-size: 12px;">${d.rssi} dBm</span>
+                                            <span style="font-size: 12px;">${rssi} dBm</span>
                                         </div>
                                     </div>
                                     ${dataRows}

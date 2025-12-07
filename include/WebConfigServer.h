@@ -66,6 +66,8 @@ private:
     void handleSetBuzzerConfig(AsyncWebServerRequest *request);
     void handleGetDataRetention(AsyncWebServerRequest *request);
     void handleSetDataRetention(AsyncWebServerRequest *request);
+    void handleGetLCDConfig(AsyncWebServerRequest *request);
+    void handleSetLCDConfig(AsyncWebServerRequest *request);
     void handleRestart(AsyncWebServerRequest *request);
     
     // Pointer to VictronBLE instance for live data

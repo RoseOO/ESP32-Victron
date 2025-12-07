@@ -187,6 +187,14 @@ void WebConfigServer::startServer() {
         handleSetDataRetention(request);
     });
     
+    server->on("/api/lcd", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetLCDConfig(request);
+    });
+    
+    server->on("/api/lcd", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        handleSetLCDConfig(request);
+    });
+    
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
     });
@@ -845,6 +853,62 @@ void WebConfigServer::handleSetDataRetention(AsyncWebServerRequest *request) {
     }
     
     saveDataRetentionConfig();
+    
+    request->send(200, "application/json", "{\"success\":true}");
+}
+
+// External declarations for LCD configuration (defined in main.cpp)
+extern int lcdFontSize;
+extern int lcdScrollRate;
+extern String lcdOrientation;
+extern void saveLCDConfig();
+
+void WebConfigServer::handleGetLCDConfig(AsyncWebServerRequest *request) {
+    String json = "{";
+    json += "\"fontSize\":" + String(lcdFontSize) + ",";
+    json += "\"scrollRate\":" + String(lcdScrollRate) + ",";
+    json += "\"orientation\":\"" + lcdOrientation + "\"";
+    json += "}";
+    
+    request->send(200, "application/json", json);
+}
+
+void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
+    if (!request->hasParam("fontSize", true) || !request->hasParam("scrollRate", true) || !request->hasParam("orientation", true)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
+        return;
+    }
+    
+    String fontSizeStr = request->getParam("fontSize", true)->value();
+    String scrollRateStr = request->getParam("scrollRate", true)->value();
+    String orientationStr = request->getParam("orientation", true)->value();
+    
+    int newFontSize = fontSizeStr.toInt();
+    int newScrollRate = scrollRateStr.toInt();
+    
+    // Validate font size (1-3)
+    if (newFontSize < 1 || newFontSize > 3) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Font size must be between 1 and 3\"}");
+        return;
+    }
+    
+    // Validate scroll rate (1-60 seconds)
+    if (newScrollRate < 1 || newScrollRate > 60) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Scroll rate must be between 1 and 60 seconds\"}");
+        return;
+    }
+    
+    // Validate orientation
+    if (orientationStr != "landscape" && orientationStr != "portrait") {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Orientation must be 'landscape' or 'portrait'\"}");
+        return;
+    }
+    
+    lcdFontSize = newFontSize;
+    lcdScrollRate = newScrollRate;
+    lcdOrientation = orientationStr;
+    
+    saveLCDConfig();
     
     request->send(200, "application/json", "{\"success\":true}");
 }
