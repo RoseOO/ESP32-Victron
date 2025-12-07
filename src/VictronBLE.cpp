@@ -505,18 +505,38 @@ uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
 }
 
 // Validate voltage reading with sanity check
-// Returns true if voltage is valid (<=MAX_VALID_VOLTAGE), false if invalid
+// Returns true if voltage is valid (within MIN_VALID_VOLTAGE to MAX_VALID_VOLTAGE), false if invalid
 // If invalid, sets device.dataValid to false and logs an error
 bool VictronBLE::validateVoltage(float voltage, const char* source, VictronDeviceData& device) {
-    // Sanity check: discard packet if voltage > MAX_VALID_VOLTAGE (clearly incorrect data)
-    if (voltage > MAX_VALID_VOLTAGE) {
+    // Sanity check: discard packet if voltage > MAX_VALID_VOLTAGE or < MIN_VALID_VOLTAGE (clearly incorrect data)
+    if (voltage > MAX_VALID_VOLTAGE || voltage < MIN_VALID_VOLTAGE) {
         device.dataValid = false;
         // Build error message using snprintf for better performance
         char errorMsg[100];
-        snprintf(errorMsg, sizeof(errorMsg), "Invalid voltage reading (>%.0fV) - packet discarded", MAX_VALID_VOLTAGE);
+        snprintf(errorMsg, sizeof(errorMsg), "Invalid voltage reading (%.2fV, valid range: %.0fV to %.0fV) - packet discarded", 
+                 voltage, MIN_VALID_VOLTAGE, MAX_VALID_VOLTAGE);
         device.errorMessage = errorMsg;
-        Serial.printf("ERROR: Invalid voltage %.2fV detected in %s packet (threshold: %.0fV) - discarding\n", 
-                     voltage, source, MAX_VALID_VOLTAGE);
+        Serial.printf("ERROR: Invalid voltage %.2fV detected in %s packet (valid range: %.0fV to %.0fV) - discarding\n", 
+                     voltage, source, MIN_VALID_VOLTAGE, MAX_VALID_VOLTAGE);
+        return false;
+    }
+    return true;
+}
+
+// Validate temperature reading with sanity check
+// Returns true if temperature is valid (between valid range and not exceeding MAX_VALID_TEMPERATURE), false if invalid
+// If invalid, sets device.dataValid to false and logs an error
+bool VictronBLE::validateTemperature(float temperature, const char* source, VictronDeviceData& device) {
+    // Sanity check: discard packet if temperature > MAX_VALID_TEMPERATURE (clearly incorrect data)
+    if (temperature > MAX_VALID_TEMPERATURE) {
+        device.dataValid = false;
+        // Build error message using snprintf for better performance
+        char errorMsg[100];
+        snprintf(errorMsg, sizeof(errorMsg), "Invalid temperature reading (%.1f°C, max: %.0f°C) - packet discarded", 
+                 temperature, MAX_VALID_TEMPERATURE);
+        device.errorMessage = errorMsg;
+        Serial.printf("ERROR: Invalid temperature %.1f°C detected in %s packet (max: %.0f°C) - discarding\n", 
+                     temperature, source, MAX_VALID_TEMPERATURE);
         return false;
     }
     return true;
@@ -575,7 +595,11 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
             // Temperature (unsigned 16-bit, units: 10mK = 0.01K)
             uint16_t tempK01 = extractUnsigned16(output, 6);
             if (tempK01 != 0xFFFF) {
-                device.temperature = (tempK01 / 100.0f) - 273.15;  // convert 0.01K to Celsius
+                float temperature = (tempK01 / 100.0f) - 273.15;  // convert 0.01K to Celsius
+                if (!validateTemperature(temperature, "SmartShunt", device)) {
+                    return;
+                }
+                device.temperature = temperature;
                 device.hasTemperature = true;
             }
         }
@@ -805,8 +829,14 @@ void VictronBLE::parseTLVRecords(const uint8_t* data, size_t length, size_t star
                 
             case BATTERY_TEMPERATURE:
             case EXTERNAL_TEMPERATURE:
-                device.temperature = decodeValue(recordData, recordLen, 0.01) - 273.15; // Kelvin to Celsius
-                device.hasTemperature = true;
+                {
+                    float temperature = decodeValue(recordData, recordLen, 0.01) - 273.15; // Kelvin to Celsius
+                    if (!validateTemperature(temperature, "TLV", device)) {
+                        return;
+                    }
+                    device.temperature = temperature;
+                    device.hasTemperature = true;
+                }
                 break;
                 
             case CONSUMED_AH:
