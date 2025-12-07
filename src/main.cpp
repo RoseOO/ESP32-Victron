@@ -36,7 +36,13 @@ const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
+bool largeDisplayMode = false;  // Toggle for large display mode (voltage, current, SOC only)
 int verticalScrollOffset = 0;  // Current vertical scroll position (TODO: implement actual scrolling)
+
+// Button double-press detection
+unsigned long lastButtonClickTime = 0;
+const unsigned long DOUBLE_PRESS_INTERVAL = 400;  // Max time between clicks for double-press (ms)
+bool waitingForDoublePress = false;
 
 // Buzzer alarm configuration
 Preferences buzzerPreferences;
@@ -61,10 +67,13 @@ int lcdFontSize = 1;  // Default font size (1x)
 int lcdScrollRate = 5;  // Default scroll rate in seconds
 String lcdOrientation = "landscape";  // Default orientation
 bool lcdAutoScroll = true;  // Default to auto-scrolling between devices
+int largeDisplayTimeout = 60;  // Timeout in seconds before auto-entering large display mode (0 = disabled)
+unsigned long lastUserInteraction = 0;  // Track last user button press for timeout
 
 // Forward declarations
 void updateDeviceList();
 void drawDisplay();
+void drawLargeDisplay();
 void loadBuzzerConfig();
 void saveBuzzerConfig();
 void loadDataRetentionConfig();
@@ -110,8 +119,10 @@ void loadLCDConfig() {
     lcdScrollRate = lcdPreferences.getInt("scrollRate", 5);
     lcdOrientation = lcdPreferences.getString("orientation", "landscape");
     lcdAutoScroll = lcdPreferences.getBool("autoScroll", true);
+    largeDisplayTimeout = lcdPreferences.getInt("largeTimeout", 60);
     lcdPreferences.end();
-    Serial.printf("LCD config loaded: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll);
+    Serial.printf("LCD config loaded: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d, largeTimeout=%d\n", 
+                  lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll, largeDisplayTimeout);
 }
 
 void saveLCDConfig() {
@@ -120,8 +131,10 @@ void saveLCDConfig() {
     lcdPreferences.putInt("scrollRate", lcdScrollRate);
     lcdPreferences.putString("orientation", lcdOrientation);
     lcdPreferences.putBool("autoScroll", lcdAutoScroll);
+    lcdPreferences.putInt("largeTimeout", largeDisplayTimeout);
     lcdPreferences.end();
-    Serial.printf("LCD config saved: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d\n", lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll);
+    Serial.printf("LCD config saved: fontSize=%d, scrollRate=%d, orientation=%s, autoScroll=%d, largeTimeout=%d\n", 
+                  lcdFontSize, lcdScrollRate, lcdOrientation.c_str(), lcdAutoScroll, largeDisplayTimeout);
 }
 
 void checkBatteryAlarm() {
@@ -183,6 +196,9 @@ void setup() {
     Serial.println("STARTUP: calling M5.begin()");
     M5.begin();
     Serial.println("STARTUP: M5.begin() returned");
+    
+    // Initialize user interaction timestamp
+    lastUserInteraction = millis();
     
     // Load buzzer configuration
     Serial.println("STARTUP: loading buzzer config");
@@ -365,6 +381,12 @@ void updateDeviceList() {
 }
 
 void drawDisplay() {
+    // Check if we're in large display mode
+    if (largeDisplayMode) {
+        drawLargeDisplay();
+        return;
+    }
+    
     if (webConfigMode) {
         // Show web configuration screen
         M5.Lcd.fillScreen(BLACK);
@@ -437,6 +459,11 @@ void drawDisplay() {
     if (device->hasPower) dataItemCount++;
     if (device->hasSOC) dataItemCount++;
     if (device->hasTemperature) dataItemCount++;
+    // Add SmartShunt specific fields
+    if (device->type == DEVICE_SMART_SHUNT) {
+        if (device->consumedAh != 0) dataItemCount++;  // Consumed Ah
+        if (device->timeToGo != 0) dataItemCount++;    // Time to Go
+    }
     if (device->hasAcOut) {
         dataItemCount++;
         if (device->acOutCurrent != 0 || device->acOutPower != 0) dataItemCount++;
@@ -510,6 +537,8 @@ void drawDisplay() {
     static float lastPower = -999.0;
     static float lastSOC = -999.0;
     static float lastTemp = -999.0;
+    static float lastConsumedAh = -999.0;
+    static int lastTimeToGo = -999;
     static bool lastDataValid = false;
     
     // Reset cache on device change
@@ -519,6 +548,8 @@ void drawDisplay() {
         lastPower = -999.0;
         lastSOC = -999.0;
         lastTemp = -999.0;
+        lastConsumedAh = -999.0;
+        lastTimeToGo = -999;
         lastDataValid = false;
     }
     
@@ -606,6 +637,49 @@ void drawDisplay() {
             M5.Lcd.setCursor(valueColumnX, y);
             M5.Lcd.printf("%.1f %%", device->batterySOC);
             lastSOC = device->batterySOC;
+        }
+        y += lineSpacing;
+    }
+    
+    // Consumed Ah - for Smart Shunt
+    if (device->type == DEVICE_SMART_SHUNT && device->consumedAh != 0) {
+        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("Consumed:");
+        
+        if (deviceChanged || device->consumedAh != lastConsumedAh) {
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+            M5.Lcd.setTextSize(lcdFontSize);
+            M5.Lcd.setTextColor(WHITE, BLACK);
+            M5.Lcd.setCursor(valueColumnX, y);
+            M5.Lcd.printf("%.1f Ah", device->consumedAh);
+            lastConsumedAh = device->consumedAh;
+        }
+        y += lineSpacing;
+    }
+    
+    // Time to Go - for Smart Shunt
+    if (device->type == DEVICE_SMART_SHUNT && device->timeToGo != 0) {
+        M5.Lcd.setTextSize(TITLE_FONT_SIZE);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("Time2Go:");
+        
+        if (deviceChanged || device->timeToGo != lastTimeToGo) {
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
+            M5.Lcd.setTextSize(lcdFontSize);
+            M5.Lcd.setTextColor(WHITE, BLACK);
+            M5.Lcd.setCursor(valueColumnX, y);
+            // Convert minutes to hours and minutes for better readability
+            if (device->timeToGo >= 60) {
+                int hours = device->timeToGo / 60;
+                int minutes = device->timeToGo % 60;
+                M5.Lcd.printf("%dh %dm", hours, minutes);
+            } else {
+                M5.Lcd.printf("%d min", device->timeToGo);
+            }
+            lastTimeToGo = device->timeToGo;
         }
         y += lineSpacing;
     }
@@ -741,6 +815,150 @@ void drawDisplay() {
     M5.Lcd.printf("RSSI:%d", device->rssi);
 }
 
+void drawLargeDisplay() {
+    // Large display mode: Show only Voltage, Current, and Battery SOC in large font
+    // This mode is designed for SmartShunt devices, but will work with any device that has the data
+    
+    if (deviceAddresses.empty()) {
+        return;
+    }
+    
+    VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+    
+    if (!device) {
+        return;
+    }
+    
+    // Track if this is a new device to force full redraw
+    static String lastDeviceAddress = "";
+    bool deviceChanged = (lastDeviceAddress != deviceAddresses[currentDeviceIndex]);
+    if (deviceChanged) {
+        M5.Lcd.fillScreen(BLACK);
+        lastDeviceAddress = deviceAddresses[currentDeviceIndex];
+    }
+    
+    // Use landscape orientation for large display
+    const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
+    const int screenHeight = (lcdOrientation == "portrait") ? 240 : 135;
+    
+    // Cache previous values to reduce flicker
+    static float lastVoltage = -999.0;
+    static float lastCurrent = -999.0;
+    static float lastSOC = -999.0;
+    static bool lastDataValid = false;
+    
+    // Reset cache on device change
+    if (deviceChanged) {
+        lastVoltage = -999.0;
+        lastCurrent = -999.0;
+        lastSOC = -999.0;
+        lastDataValid = false;
+    }
+    
+    // Device name header (small font)
+    if (deviceChanged) {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(CYAN, BLACK);
+        M5.Lcd.setCursor(5, 0);
+        String deviceName = device->name;
+        if (deviceName.length() > 26) {
+            deviceName = deviceName.substring(0, 23) + "...";
+        }
+        M5.Lcd.println(deviceName);
+        
+        // Draw separator line
+        M5.Lcd.drawLine(0, 12, screenWidth, 12, DARKGREY);
+    }
+    
+    // Calculate vertical spacing for 3 large values
+    int startY = 20;
+    int spacing = (screenHeight - startY - 20) / 3;  // Divide remaining space by 3
+    int y = startY;
+    
+    // Large Voltage display
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(GREEN, BLACK);
+    M5.Lcd.setCursor(5, y);
+    M5.Lcd.print("VOLTAGE");
+    
+    if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
+        M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+        M5.Lcd.setTextSize(3);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(5, y + 12);
+        if (device->dataValid) {
+            M5.Lcd.printf("%.2f V", device->voltage);
+            lastVoltage = device->voltage;
+        } else {
+            M5.Lcd.print("-- V");
+        }
+        lastDataValid = device->dataValid;
+    }
+    y += spacing;
+    
+    // Large Current display
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(GREEN, BLACK);
+    M5.Lcd.setCursor(5, y);
+    M5.Lcd.print("CURRENT");
+    
+    if (deviceChanged || device->current != lastCurrent) {
+        M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+        M5.Lcd.setTextSize(3);
+        M5.Lcd.setTextColor(WHITE, BLACK);
+        M5.Lcd.setCursor(5, y + 12);
+        if (device->dataValid) {
+            M5.Lcd.printf("%.2f A", device->current);
+            lastCurrent = device->current;
+        } else {
+            M5.Lcd.print("-- A");
+        }
+    }
+    y += spacing;
+    
+    // Large Battery SOC display (if available)
+    if (device->hasSOC) {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(GREEN, BLACK);
+        M5.Lcd.setCursor(5, y);
+        M5.Lcd.print("BATTERY SOC");
+        
+        if (deviceChanged || device->batterySOC != lastSOC) {
+            M5.Lcd.fillRect(5, y + 12, screenWidth - 10, 30, BLACK);
+            M5.Lcd.setTextSize(3);
+            uint16_t color = WHITE;
+            if (device->batterySOC <= 20) {
+                color = RED;
+            } else if (device->batterySOC <= 50) {
+                color = YELLOW;
+            } else {
+                color = GREEN;
+            }
+            M5.Lcd.setTextColor(color, BLACK);
+            M5.Lcd.setCursor(5, y + 12);
+            M5.Lcd.printf("%.1f %%", device->batterySOC);
+            lastSOC = device->batterySOC;
+        }
+    } else {
+        // If no SOC available, show a message
+        if (deviceChanged) {
+            M5.Lcd.setTextSize(1);
+            M5.Lcd.setTextColor(DARKGREY, BLACK);
+            M5.Lcd.setCursor(5, y);
+            M5.Lcd.print("(No SOC data)");
+        }
+    }
+    
+    // Bottom instructions
+    if (deviceChanged) {
+        M5.Lcd.drawLine(0, screenHeight - 12, screenWidth, screenHeight - 12, DARKGREY);
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(DARKGREY, BLACK);
+        M5.Lcd.setCursor(5, screenHeight - 8);
+        M5.Lcd.print("M5: Exit Large Mode");
+    }
+}
+
 void loop() {
     M5.update();
     unsigned long currentTime = millis();
@@ -758,7 +976,9 @@ void loop() {
     if (M5.BtnA.pressedFor(LONG_PRESS_DURATION) && !longPressHandled) {
         if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
             lastButtonPressTime = currentTime;
+            lastUserInteraction = currentTime;  // Reset timeout
             webConfigMode = !webConfigMode;
+            largeDisplayMode = false;  // Exit large mode when entering web config
             drawDisplay();
             longPressHandled = true;
         }
@@ -767,15 +987,54 @@ void loop() {
     // Reset long press flag when button is released
     if (M5.BtnA.wasReleased()) {
         longPressHandled = false;
+        waitingForDoublePress = false;  // Reset double-press waiting state on release
     }
     
-    // Button A: Switch to next device or go back from config mode (only if not a long press)
+    // Button A: Handle single press, double press for large display mode toggle
     if (M5.BtnA.wasPressed() && !longPressHandled && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
-        lastButtonPressTime = currentTime;
+        lastUserInteraction = currentTime;  // Reset timeout
         
+        // Check if this is a double press
+        if (waitingForDoublePress && (currentTime - lastButtonClickTime < DOUBLE_PRESS_INTERVAL)) {
+            // Double press detected - toggle large display mode
+            Serial.println("Double press detected - toggling large display mode");
+            waitingForDoublePress = false;
+            
+            // Only enter large display mode if we're in normal mode with a SmartShunt device
+            if (!webConfigMode && !deviceAddresses.empty()) {
+                VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+                if (device && device->type == DEVICE_SMART_SHUNT) {
+                    largeDisplayMode = !largeDisplayMode;
+                    Serial.printf("Large display mode: %d\n", largeDisplayMode);
+                } else {
+                    Serial.println("Large display mode only works with SmartShunt devices");
+                }
+            } else if (largeDisplayMode) {
+                // If already in large mode, exit it
+                largeDisplayMode = false;
+            }
+            drawDisplay();
+            lastButtonPressTime = currentTime;
+        } else {
+            // Single press - start waiting for potential double press
+            lastButtonClickTime = currentTime;
+            waitingForDoublePress = true;
+            lastButtonPressTime = currentTime;
+        }
+    }
+    
+    // Process single press action after double-press timeout
+    if (waitingForDoublePress && (currentTime - lastButtonClickTime > DOUBLE_PRESS_INTERVAL)) {
+        waitingForDoublePress = false;
+        
+        // Now process as single press
         if (deviceAddresses.empty()) {
             // If no devices found, toggle web config display
             webConfigMode = !webConfigMode;
+            drawDisplay();
+        } else if (largeDisplayMode) {
+            // In large display mode: exit it
+            largeDisplayMode = false;
             drawDisplay();
         } else if (!webConfigMode) {
             // Normal mode: cycle through devices
@@ -786,6 +1045,19 @@ void loop() {
             // Config mode: go back to normal mode
             webConfigMode = false;
             drawDisplay();
+        }
+    }
+    
+    // Auto-enter large display mode after timeout (if enabled and not already in large/web config mode)
+    if (largeDisplayTimeout > 0 && !largeDisplayMode && !webConfigMode && !deviceAddresses.empty()) {
+        if (currentTime - lastUserInteraction > (largeDisplayTimeout * 1000)) {
+            // Check if current device is a SmartShunt
+            VictronDeviceData* device = victron->getDevice(deviceAddresses[currentDeviceIndex]);
+            if (device && device->type == DEVICE_SMART_SHUNT) {
+                Serial.println("Auto-entering large display mode due to inactivity");
+                largeDisplayMode = true;
+                drawDisplay();
+            }
         }
     }
     
