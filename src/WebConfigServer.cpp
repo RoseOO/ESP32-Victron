@@ -107,16 +107,6 @@ void WebConfigServer::startServer() {
     
     server = new AsyncWebServer(80);
     
-    // Body handler for POST requests with form data
-    // ESPAsyncWebServer requires explicit body handling for POST parameters to work reliably
-    // This handler ensures the body is received before the request handler is called
-    auto bodyHandler = [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-        // The library should parse form data automatically when this handler is present
-        // and the Content-Type is application/x-www-form-urlencoded
-        // If parameters are still not available, they may need manual parsing
-        (void)request; (void)data; (void)len; (void)index; (void)total;
-    };
-    
     // Serve main page
     server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleRoot(request);
@@ -147,15 +137,15 @@ void WebConfigServer::startServer() {
     
     server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleAddDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/devices/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleUpdateDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/devices/delete", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleDeleteDevice(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/wifi", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetWiFiConfig(request);
@@ -163,7 +153,7 @@ void WebConfigServer::startServer() {
     
     server->on("/api/wifi", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetWiFiConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/mqtt", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetMQTTConfig(request);
@@ -171,7 +161,7 @@ void WebConfigServer::startServer() {
     
     server->on("/api/mqtt", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetMQTTConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/buzzer", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetBuzzerConfig(request);
@@ -179,11 +169,11 @@ void WebConfigServer::startServer() {
     
     server->on("/api/buzzer", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetBuzzerConfig(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
-    }, NULL, bodyHandler);
+    });
     
     server->begin();
     serverStarted = true;
