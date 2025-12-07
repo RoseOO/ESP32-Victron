@@ -424,18 +424,26 @@
             </div>
             <form id="lcdForm">
                 <div class="form-group">
-                    <label>Font Size</label>
+                    <label>Font Size (Data Values)</label>
                     <select id="lcdFontSizeInput">
                         <option value="1">Small (1x)</option>
                         <option value="2">Medium (2x)</option>
                         <option value="3">Large (3x)</option>
                     </select>
-                    <small>Size of text on the LCD display</small>
+                    <small>Size of data values (labels stay at 1x for more space)</small>
+                </div>
+                <div class="form-group">
+                    <label>Auto-Scroll Between Devices</label>
+                    <select id="lcdAutoScrollInput">
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled (Lock to Current)</option>
+                    </select>
+                    <small>Enable to auto-scroll through devices, disable to stay on one device</small>
                 </div>
                 <div class="form-group">
                     <label>Page Scroll Rate (seconds)</label>
                     <input type="number" id="lcdScrollRateInput" placeholder="5" value="5" min="1" max="60">
-                    <small>Time to display each device before scrolling to next</small>
+                    <small>Time to display each device before scrolling to next (when auto-scroll enabled)</small>
                 </div>
                 <div class="form-group">
                     <label>Display Orientation</label>
@@ -443,10 +451,10 @@
                         <option value="landscape">Landscape (default)</option>
                         <option value="portrait">Portrait</option>
                     </select>
-                    <small>Screen orientation mode</small>
+                    <small>Screen orientation mode (requires reboot to apply)</small>
                 </div>
                 <div class="info-box">
-                    <strong>Info:</strong> These settings control how device information is displayed on the M5StickC PLUS2 LCD screen.
+                    <strong>Info:</strong> These settings control how device information is displayed on the M5StickC PLUS2 LCD screen. Changing orientation will reboot the device.
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn-secondary" onclick="closeLCDModal()">Cancel</button>
@@ -759,6 +767,7 @@
                     document.getElementById('lcdFontSizeInput').value = lcd.fontSize || 1;
                     document.getElementById('lcdScrollRateInput').value = lcd.scrollRate || 5;
                     document.getElementById('lcdOrientationInput').value = lcd.orientation || 'landscape';
+                    document.getElementById('lcdAutoScrollInput').value = (lcd.autoScroll !== false) ? 'true' : 'false';
                     document.getElementById('lcdModal').classList.add('active');
                 });
         }
@@ -800,6 +809,7 @@
             formData.append('fontSize', document.getElementById('lcdFontSizeInput').value);
             formData.append('scrollRate', document.getElementById('lcdScrollRateInput').value);
             formData.append('orientation', document.getElementById('lcdOrientationInput').value);
+            formData.append('autoScroll', document.getElementById('lcdAutoScrollInput').value);
             
             fetch('/api/lcd', {
                 method: 'POST',
@@ -813,7 +823,11 @@
                 if (result.success) {
                     closeLCDModal();
                     loadLCDStatus();
-                    alert('LCD settings saved successfully!');
+                    if (result.rebootRequired) {
+                        alert('LCD settings saved! The device is rebooting to apply the orientation change. Please wait a moment and refresh this page.');
+                    } else {
+                        alert('LCD settings saved successfully!');
+                    }
                 } else {
                     alert('Error: ' + result.error);
                 }

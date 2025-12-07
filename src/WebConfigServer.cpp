@@ -878,20 +878,26 @@ void WebConfigServer::handleSetDataRetention(AsyncWebServerRequest *request) {
 extern int lcdFontSize;
 extern int lcdScrollRate;
 extern String lcdOrientation;
+extern bool lcdAutoScroll;
 extern void saveLCDConfig();
+extern bool pendingReboot;
+extern unsigned long rebootScheduledTime;
+extern const unsigned long REBOOT_DELAY;
 
 void WebConfigServer::handleGetLCDConfig(AsyncWebServerRequest *request) {
     String json = "{";
     json += "\"fontSize\":" + String(lcdFontSize) + ",";
     json += "\"scrollRate\":" + String(lcdScrollRate) + ",";
-    json += "\"orientation\":\"" + lcdOrientation + "\"";
+    json += "\"orientation\":\"" + lcdOrientation + "\",";
+    json += "\"autoScroll\":" + String(lcdAutoScroll ? "true" : "false");
     json += "}";
     
     request->send(200, "application/json", json);
 }
 
 void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
-    if (!request->hasParam("fontSize", true) || !request->hasParam("scrollRate", true) || !request->hasParam("orientation", true)) {
+    if (!request->hasParam("fontSize", true) || !request->hasParam("scrollRate", true) || 
+        !request->hasParam("orientation", true) || !request->hasParam("autoScroll", true)) {
         request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
         return;
     }
@@ -899,9 +905,11 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
     String fontSizeStr = request->getParam("fontSize", true)->value();
     String scrollRateStr = request->getParam("scrollRate", true)->value();
     String orientationStr = request->getParam("orientation", true)->value();
+    String autoScrollStr = request->getParam("autoScroll", true)->value();
     
     int newFontSize = fontSizeStr.toInt();
     int newScrollRate = scrollRateStr.toInt();
+    bool newAutoScroll = (autoScrollStr == "true" || autoScrollStr == "1");
     
     // Validate font size (1-3)
     if (newFontSize < 1 || newFontSize > 3) {
@@ -921,11 +929,23 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
         return;
     }
     
+    // Check if orientation changed - if so, we need to reboot
+    bool orientationChanged = (orientationStr != lcdOrientation);
+    
     lcdFontSize = newFontSize;
     lcdScrollRate = newScrollRate;
     lcdOrientation = orientationStr;
+    lcdAutoScroll = newAutoScroll;
     
     saveLCDConfig();
     
-    request->send(200, "application/json", "{\"success\":true}");
+    if (orientationChanged) {
+        // Send response indicating reboot is needed
+        request->send(200, "application/json", "{\"success\":true,\"rebootRequired\":true}");
+        // Schedule a reboot via flag (handled in main loop)
+        pendingReboot = true;
+        rebootScheduledTime = millis();
+    } else {
+        request->send(200, "application/json", "{\"success\":true}");
+    }
 }
