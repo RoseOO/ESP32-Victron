@@ -121,6 +121,76 @@
             font-size: 12px;
             margin-top: 20px;
         }
+        .settings-section {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settings-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        .setting-label {
+            font-weight: 500;
+            color: #555;
+        }
+        .setting-description {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
@@ -134,6 +204,20 @@
         </div>
         
         <div class="content">
+            <div class="settings-section">
+                <div class="settings-title">Display Settings</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Retain Last Good Data</div>
+                        <div class="setting-description">Keep displaying last valid readings when new data fails to decode</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="retainLastDataToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
             <div id="devicesList" class="devices-grid">
                 <div class="status loading">
                     <p>Loading devices...</p>
@@ -273,7 +357,50 @@
                 });
         }
         
+        // Load data retention setting
+        function loadDataRetentionSetting() {
+            fetch('/api/data-retention')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('retainLastDataToggle').checked = data.retainLastData;
+                })
+                .catch(err => {
+                    console.error('Error loading data retention setting:', err);
+                });
+        }
+        
+        // Save data retention setting
+        function saveDataRetentionSetting(enabled) {
+            const formData = new URLSearchParams();
+            formData.append('retainLastData', enabled ? 'true' : 'false');
+            
+            fetch('/api/data-retention', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Data retention setting saved');
+                } else {
+                    console.error('Failed to save setting:', data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error saving data retention setting:', err);
+            });
+        }
+        
+        // Handle toggle change
+        document.getElementById('retainLastDataToggle').addEventListener('change', function(e) {
+            saveDataRetentionSetting(e.target.checked);
+        });
+        
         // Initial load
+        loadDataRetentionSetting();
         updateDevices();
         
         // Update every 2 seconds

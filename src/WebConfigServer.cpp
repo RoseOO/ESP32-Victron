@@ -178,6 +178,14 @@ void WebConfigServer::startServer() {
         handleSetBuzzerConfig(request);
     }, NULL, bodyHandler);
     
+    server->on("/api/data-retention", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetDataRetention(request);
+    });
+    
+    server->on("/api/data-retention", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        handleSetDataRetention(request);
+    }, NULL, bodyHandler);
+    
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
     }, NULL, bodyHandler);
@@ -804,6 +812,38 @@ void WebConfigServer::handleSetBuzzerConfig(AsyncWebServerRequest *request) {
     buzzerThreshold = newThreshold;
     
     saveBuzzerConfig();
+    
+    request->send(200, "application/json", "{\"success\":true}");
+}
+
+// External declarations for data retention configuration (defined in main.cpp)
+extern bool retainLastData;
+extern void saveDataRetentionConfig();
+extern VictronBLE *victron;
+
+void WebConfigServer::handleGetDataRetention(AsyncWebServerRequest *request) {
+    String json = "{";
+    json += "\"retainLastData\":" + String(retainLastData ? "true" : "false");
+    json += "}";
+    
+    request->send(200, "application/json", json);
+}
+
+void WebConfigServer::handleSetDataRetention(AsyncWebServerRequest *request) {
+    if (!request->hasParam("retainLastData", true)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing retainLastData parameter\"}");
+        return;
+    }
+    
+    String retainStr = request->getParam("retainLastData", true)->value();
+    retainLastData = (retainStr == "true");
+    
+    // Update VictronBLE setting
+    if (victron) {
+        victron->setRetainLastData(retainLastData);
+    }
+    
+    saveDataRetentionConfig();
     
     request->send(200, "application/json", "{\"success\":true}");
 }
