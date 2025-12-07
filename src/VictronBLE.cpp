@@ -316,14 +316,27 @@ int VictronBLE::getDeviceCount() {
     return devices.size();
 }
 
+String VictronBLE::normalizeAddress(const String& address) {
+    String normalized = "";
+    for (size_t i = 0; i < address.length(); i++) {
+        char c = address[i];
+        if (c != ':') {
+            normalized += tolower(c);
+        }
+    }
+    return normalized;
+}
+
 void VictronBLE::setEncryptionKey(const String& address, const String& key) {
-    encryptionKeys[address] = key;
-    Serial.printf("Set encryption key for device %s\n", address.c_str());
+    String normalizedAddr = normalizeAddress(address);
+    encryptionKeys[normalizedAddr] = key;
+    Serial.printf("Set encryption key for device %s (normalized: %s)\n", address.c_str(), normalizedAddr.c_str());
 }
 
 String VictronBLE::getEncryptionKey(const String& address) {
-    if (encryptionKeys.find(address) != encryptionKeys.end()) {
-        return encryptionKeys[address];
+    String normalizedAddr = normalizeAddress(address);
+    if (encryptionKeys.find(normalizedAddr) != encryptionKeys.end()) {
+        return encryptionKeys[normalizedAddr];
     }
     return "";
 }
