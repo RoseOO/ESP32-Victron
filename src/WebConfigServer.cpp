@@ -185,7 +185,7 @@ void WebConfigServer::startServer() {
     
     server->on("/api/data-retention", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleSetDataRetention(request);
-    }, NULL, bodyHandler);
+    });
     
     server->on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleRestart(request);
