@@ -401,15 +401,23 @@ void loop() {
     unsigned long currentTime = millis();
     
     // Long press button A: toggle web config display (check this first to prevent short press from firing)
-    if (M5.BtnA.wasReleasefor(1000)) {
+    static bool longPressHandled = false;
+    if (M5.BtnA.pressedFor(1000) && !longPressHandled) {
         if (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE) {
             lastButtonPressTime = currentTime;
             webConfigMode = !webConfigMode;
             drawDisplay();
+            longPressHandled = true;
         }
     }
-    // Button A: Switch to next device or go back from config mode
-    else if (M5.BtnA.wasPressed() && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
+    
+    // Reset long press flag when button is released
+    if (M5.BtnA.wasReleased()) {
+        longPressHandled = false;
+    }
+    
+    // Button A: Switch to next device or go back from config mode (only if not a long press)
+    if (M5.BtnA.wasPressed() && !longPressHandled && (currentTime - lastButtonPressTime > BUTTON_DEBOUNCE)) {
         lastButtonPressTime = currentTime;
         
         if (deviceAddresses.empty()) {
