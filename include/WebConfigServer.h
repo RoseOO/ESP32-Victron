@@ -49,8 +49,10 @@ private:
     // Request handlers
     void handleRoot(AsyncWebServerRequest *request);
     void handleMonitor(AsyncWebServerRequest *request);
+    void handleDebug(AsyncWebServerRequest *request);
     void handleGetDevices(AsyncWebServerRequest *request);
     void handleGetLiveData(AsyncWebServerRequest *request);
+    void handleGetDebugData(AsyncWebServerRequest *request);
     void handleAddDevice(AsyncWebServerRequest *request);
     void handleUpdateDevice(AsyncWebServerRequest *request);
     void handleDeleteDevice(AsyncWebServerRequest *request);

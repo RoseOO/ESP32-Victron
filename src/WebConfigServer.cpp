@@ -115,6 +115,11 @@ void WebConfigServer::startServer() {
         handleMonitor(request);
     });
     
+    // Serve debug page
+    server->on("/debug", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleDebug(request);
+    });
+    
     // API endpoints
     server->on("/api/devices", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetDevices(request);
@@ -122,6 +127,10 @@ void WebConfigServer::startServer() {
     
     server->on("/api/devices/live", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetLiveData(request);
+    });
+    
+    server->on("/api/debug", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetDebugData(request);
     });
     
     server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
@@ -368,6 +377,106 @@ void WebConfigServer::handleMonitor(AsyncWebServerRequest *request) {
     } else {
         request->send(500, "text/plain", "ERROR: monitor.html not found in filesystem. Please upload filesystem: pio run --target uploadfs");
     }
+}
+
+void WebConfigServer::handleDebug(AsyncWebServerRequest *request) {
+    if (!filesystemMounted) {
+        request->send(500, "text/plain", "ERROR: Filesystem not mounted. Please upload filesystem: pio run --target uploadfs");
+        return;
+    }
+    
+    if (LittleFS.exists("/debug.html")) {
+        request->send(LittleFS, "/debug.html", "text/html");
+    } else {
+        request->send(500, "text/plain", "ERROR: debug.html not found in filesystem. Please upload filesystem: pio run --target uploadfs");
+    }
+}
+
+void WebConfigServer::handleGetDebugData(AsyncWebServerRequest *request) {
+    if (!victronBLE) {
+        request->send(500, "application/json", "{\"error\":\"VictronBLE not initialized\"}");
+        return;
+    }
+    
+    String json = "{\"devices\":[";
+    auto& devices = victronBLE->getDevices();
+    bool first = true;
+    
+    for (auto& pair : devices) {
+        if (!first) json += ",";
+        first = false;
+        
+        VictronDeviceData* device = &pair.second;
+        json += "{";
+        json += "\"name\":\"" + device->name + "\",";
+        json += "\"address\":\"" + device->address + "\",";
+        json += "\"type\":" + String((int)device->type) + ",";
+        json += "\"typeName\":\"";
+        
+        switch (device->type) {
+            case DEVICE_SMART_SHUNT:
+                json += "Smart Shunt";
+                break;
+            case DEVICE_SMART_SOLAR:
+                json += "Smart Solar";
+                break;
+            case DEVICE_BLUE_SMART_CHARGER:
+                json += "Blue Smart Charger";
+                break;
+            case DEVICE_INVERTER:
+                json += "Inverter";
+                break;
+            case DEVICE_DCDC_CONVERTER:
+                json += "DC-DC Converter";
+                break;
+            default:
+                json += "Unknown";
+                break;
+        }
+        
+        json += "\",";
+        json += "\"rssi\":" + String(device->rssi) + ",";
+        json += "\"dataValid\":" + String(device->dataValid ? "true" : "false") + ",";
+        json += "\"encrypted\":" + String(device->encrypted ? "true" : "false") + ",";
+        String mfgIdHex = String(device->manufacturerId, HEX);
+        mfgIdHex.toUpperCase();
+        json += "\"manufacturerId\":\"0x" + mfgIdHex + "\",";
+        String modelIdHex = String(device->modelId, HEX);
+        modelIdHex.toUpperCase();
+        json += "\"modelId\":\"0x" + modelIdHex + "\",";
+        json += "\"rawDataLength\":" + String(device->rawDataLength) + ",";
+        json += "\"lastUpdate\":" + String(millis() - device->lastUpdate) + ",";
+        
+        // Raw manufacturer data as byte array
+        json += "\"rawData\":[";
+        for (size_t i = 0; i < device->rawDataLength; i++) {
+            if (i > 0) json += ",";
+            json += String(device->rawManufacturerData[i]);
+        }
+        json += "],";
+        
+        // Parsed records
+        json += "\"records\":[";
+        for (size_t i = 0; i < device->parsedRecords.size(); i++) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"type\":" + String(device->parsedRecords[i].type) + ",";
+            json += "\"length\":" + String(device->parsedRecords[i].length) + ",";
+            json += "\"data\":[";
+            for (size_t j = 0; j < device->parsedRecords[i].length; j++) {
+                if (j > 0) json += ",";
+                json += String(device->parsedRecords[i].data[j]);
+            }
+            json += "]";
+            json += "}";
+        }
+        json += "]";
+        
+        json += "}";
+    }
+    
+    json += "]}";
+    request->send(200, "application/json", json);
 }
 
 void WebConfigServer::handleGetMQTTConfig(AsyncWebServerRequest *request) {

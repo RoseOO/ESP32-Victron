@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <map>
+#include <vector>
 
 // Victron BLE Service UUID
 #define VICTRON_MANUFACTURER_ID 0x02E1
@@ -44,6 +45,17 @@ enum VictronRecordType {
     INPUT_VOLTAGE = 0x14,       // DC-DC input voltage
     OUTPUT_VOLTAGE = 0x15,      // DC-DC output voltage
     OFF_REASON = 0x16           // Device off reason
+};
+
+// Structure for parsed records
+struct VictronRecord {
+    uint8_t type;
+    uint8_t length;
+    uint8_t data[32];  // Maximum record data size
+    
+    VictronRecord() : type(0), length(0) {
+        memset(data, 0, sizeof(data));
+    }
 };
 
 // Victron Device Data Structure
@@ -89,6 +101,14 @@ struct VictronDeviceData {
     bool hasInputVoltage;
     bool hasOutputVoltage;
     
+    // Raw debug data (BLE manufacturer data is typically 20-30 bytes for Victron devices)
+    uint8_t rawManufacturerData[64];  // Sufficient for typical BLE advertisement payloads
+    size_t rawDataLength;
+    uint16_t manufacturerId;
+    uint16_t modelId;
+    bool encrypted;
+    std::vector<VictronRecord> parsedRecords;
+    
     VictronDeviceData() : 
         type(DEVICE_UNKNOWN), 
         rssi(0),
@@ -116,7 +136,13 @@ struct VictronDeviceData {
         hasTemperature(false),
         hasAcOut(false),
         hasInputVoltage(false),
-        hasOutputVoltage(false) {}
+        hasOutputVoltage(false),
+        rawDataLength(0),
+        manufacturerId(0),
+        modelId(0),
+        encrypted(false) {
+        memset(rawManufacturerData, 0, sizeof(rawManufacturerData));
+    }
 };
 
 class VictronBLE {
