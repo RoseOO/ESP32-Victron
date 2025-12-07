@@ -123,14 +123,15 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
 }
 
 bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey) {
-    // Victron BLE advertisement format (based on victron-ble Python library):
+    // Victron BLE advertisement format (based on reference implementation):
     // [0-1]: Manufacturer ID (0x02E1) - little-endian
     // [2-3]: Model ID - little-endian
     // [4]: Readout type / Encryption indicator (0x00 for instant readout, non-zero for encrypted)
     // For encrypted packets:
-    //   [5-6]: IV/Counter (nonce) - little-endian
-    //   [7]: Encryption key match byte (first byte, should match first byte of key)
-    //   [8+]: Encrypted data records
+    //   [5-6]: Additional flags/padding
+    //   [7-8]: IV/Counter (nonce) - little-endian (LSB, MSB)
+    //   [9]: Encryption key match byte (should match first byte of key)
+    //   [10+]: Encrypted data records
     // For unencrypted packets:
     //   [5+]: Data records (unencrypted)
     
@@ -142,9 +143,10 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // Check if data is encrypted (byte 4 != 0x00)
     bool isEncrypted = (data[4] != 0x00);
     
-    // For encrypted data, we need at least 8 bytes (header + IV + key check byte)
-    if (isEncrypted && length < 8) {
-        Serial.printf("ERROR: Encrypted packet too short: %d bytes (need at least 8)\n", length);
+    // For encrypted data, we need at least 10 bytes (manufacturer ID, model ID, readout type, 
+    // flags/padding, IV, and key check byte)
+    if (isEncrypted && length < 10) {
+        Serial.printf("ERROR: Encrypted packet too short: %d bytes (need at least 10)\n", length);
         return false;
     }
     
@@ -175,9 +177,9 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     device.errorMessage = "";  // Clear any previous error message
     
     // Determine where to start parsing records
-    // For encrypted data: records start at byte 8 (after header + key check byte)
+    // For encrypted data: records start at byte 10 (after header + IV + key check byte)
     // For unencrypted data: records start at byte 5 (after manufacturer ID, model ID, and readout type)
-    size_t pos = isEncrypted ? 8 : 5;
+    size_t pos = isEncrypted ? 10 : 5;
     
     while (pos < length) {
         if (pos + 1 >= length) break;
@@ -383,16 +385,17 @@ static int hexCharToValue(char c) {
 
 bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key) {
     // Victron uses AES-128-CTR encryption for BLE data
-    // Packet structure (based on victron-ble Python library):
+    // Packet structure (based on reference implementation):
     // [0-1]: Manufacturer ID (0x02E1) - little-endian
     // [2-3]: Model ID - little-endian
     // [4]: Readout type / Encryption indicator
-    // [5-6]: IV/Counter (nonce) - little-endian
-    // [7]: Encryption Key Match byte (first byte of encrypted data, should match first byte of key)
-    // [8+]: Encrypted payload
+    // [5-6]: Additional flags/padding
+    // [7-8]: IV/Counter (nonce) - little-endian (LSB, MSB)
+    // [9]: Encryption Key Match byte (should match first byte of key)
+    // [10+]: Encrypted payload
     
-    if (key.isEmpty() || length < 8) {
-        Serial.println("ERROR: Invalid encryption key or data length");
+    if (key.isEmpty() || length < 10) {
+        Serial.printf("ERROR: Invalid encryption key or data length (minimum 10 bytes required, got %d)\n", length);
         return false;
     }
     
@@ -427,28 +430,28 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
         keyBytes[i] = (highVal << 4) | lowVal;
     }
     
-    // Verify the encryption key match byte (byte 7 should match keyBytes[0])
+    // Verify the encryption key match byte (byte 9 should match keyBytes[0])
     // This is a critical validation - if it doesn't match, the key is almost certainly wrong
-    if (encryptedData[7] != keyBytes[0]) {
+    if (encryptedData[9] != keyBytes[0]) {
         Serial.println("==========================================");
         Serial.printf("ERROR: Encryption key match byte mismatch!\n");
         Serial.printf("  Expected: 0x%02X (first byte of your key)\n", keyBytes[0]);
-        Serial.printf("  Got:      0x%02X (byte 7 of BLE packet)\n", encryptedData[7]);
+        Serial.printf("  Got:      0x%02X (byte 9 of BLE packet)\n", encryptedData[9]);
         Serial.println("  This indicates an INCORRECT encryption key.");
         Serial.println("  Please verify the key from VictronConnect app.");
         Serial.println("==========================================");
         return false;
     }
     
-    // Extract nonce/counter from bytes 5 and 6
-    uint8_t dataCounterLSB = encryptedData[5];
-    uint8_t dataCounterMSB = encryptedData[6];
+    // Extract nonce/counter from bytes 7 and 8
+    uint8_t dataCounterLSB = encryptedData[7];
+    uint8_t dataCounterMSB = encryptedData[8];
     
-    // Copy header (first 8 bytes) as-is - they are not encrypted
-    memcpy(decryptedData, encryptedData, 8);
+    // Copy header (first 10 bytes) as-is - they are not encrypted
+    memcpy(decryptedData, encryptedData, 10);
     
-    // Decrypt the payload starting from byte 8
-    size_t encryptedPayloadLength = length - 8;
+    // Decrypt the payload starting from byte 10
+    size_t encryptedPayloadLength = length - 10;
     if (encryptedPayloadLength == 0) {
         Serial.println("WARNING: No encrypted payload to decrypt");
         return true; // No payload to decrypt, but not an error
@@ -486,8 +489,8 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
                                &ncOffset, 
                                nonceCounter, 
                                streamBlock, 
-                               &encryptedData[8],        // source: encrypted payload
-                               &decryptedData[8]);       // destination: decrypted payload
+                               &encryptedData[10],        // source: encrypted payload
+                               &decryptedData[10]);       // destination: decrypted payload
     
     esp_aes_free(&aesCtx);
     

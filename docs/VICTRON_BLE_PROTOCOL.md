@@ -33,9 +33,9 @@ This implementation supports both modes. For encrypted devices:
 
 Encrypted BLE advertisements use AES-128-CTR (Counter mode) encryption:
 - **Key**: 128-bit (16 bytes) device-specific key, provided as 32 hex characters
-- **Nonce/Counter**: Bytes 5-6 of the manufacturer data (LSB, MSB)
-- **Key Match Byte**: Byte 7 should match the first byte of the encryption key
-- **Encrypted Payload**: Starts at byte 8 and continues to the end of the packet
+- **Nonce/Counter**: Bytes 7-8 of the manufacturer data (LSB, MSB)
+- **Key Match Byte**: Byte 9 should match the first byte of the encryption key
+- **Encrypted Payload**: Starts at byte 10 and continues to the end of the packet
 
 The implementation uses the ESP32's built-in `esp_aes` library for hardware-accelerated AES decryption.
 
