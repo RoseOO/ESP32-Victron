@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
+#include <LittleFS.h>
 #include <vector>
 
 // Structure to store device configuration
@@ -37,11 +38,6 @@ private:
     std::vector<DeviceConfig> deviceConfigs;
     WiFiConfig wifiConfig;
     bool serverStarted;
-    
-    // HTML page generation
-    String generateIndexPage();
-    String generateDeviceListHTML();
-    String generateWiFiConfigHTML();
     
     // Configuration persistence
     void saveWiFiConfig();
