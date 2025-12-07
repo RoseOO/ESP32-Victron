@@ -382,14 +382,28 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     uint8_t keyBytes[16];
     for (int i = 0; i < 16; i++) {
         String byteStr = key.substring(i * 2, i * 2 + 2);
+        // Validate that both characters are valid hex digits
+        for (int j = 0; j < 2; j++) {
+            char c = byteStr.charAt(j);
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                Serial.printf("ERROR: Invalid hex character '%c' in encryption key at position %d\n", c, i * 2 + j);
+                return false;
+            }
+        }
         keyBytes[i] = (uint8_t)strtol(byteStr.c_str(), NULL, 16);
     }
     
     // Verify the encryption key match byte (byte 7 should match keyBytes[0])
+    // This is a critical validation - if it doesn't match, the key is almost certainly wrong
     if (encryptedData[7] != keyBytes[0]) {
-        Serial.printf("WARNING: Encryption key match byte mismatch. Expected 0x%02X, got 0x%02X\n", 
-                     keyBytes[0], encryptedData[7]);
-        Serial.println("This might indicate an incorrect encryption key.");
+        Serial.println("==========================================");
+        Serial.printf("ERROR: Encryption key match byte mismatch!\n");
+        Serial.printf("  Expected: 0x%02X (first byte of your key)\n", keyBytes[0]);
+        Serial.printf("  Got:      0x%02X (byte 7 of BLE packet)\n", encryptedData[7]);
+        Serial.println("  This indicates an INCORRECT encryption key.");
+        Serial.println("  Please verify the key from VictronConnect app.");
+        Serial.println("==========================================");
+        return false;
     }
     
     // Extract nonce/counter from bytes 5 and 6
@@ -419,9 +433,14 @@ bool VictronBLE::decryptData(const uint8_t* encryptedData, size_t length, uint8_
     }
     
     // Prepare nonce/counter for AES-CTR mode
-    // The counter is initialized with data counter bytes and padded with zeros
-    uint8_t nonceCounter[16] = {dataCounterLSB, dataCounterMSB, 0};
-    uint8_t streamBlock[16] = {0};
+    // The counter is initialized with data counter bytes and remaining bytes set to zero
+    uint8_t nonceCounter[16];
+    memset(nonceCounter, 0, sizeof(nonceCounter));
+    nonceCounter[0] = dataCounterLSB;
+    nonceCounter[1] = dataCounterMSB;
+    
+    uint8_t streamBlock[16];
+    memset(streamBlock, 0, sizeof(streamBlock));
     size_t ncOffset = 0;
     
     // Decrypt using AES-128-CTR
