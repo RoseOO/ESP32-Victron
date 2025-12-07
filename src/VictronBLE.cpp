@@ -511,7 +511,10 @@ bool VictronBLE::validateVoltage(float voltage, const char* source, VictronDevic
     // Sanity check: discard packet if voltage > MAX_VALID_VOLTAGE (clearly incorrect data)
     if (voltage > MAX_VALID_VOLTAGE) {
         device.dataValid = false;
-        device.errorMessage = String("Invalid voltage reading (>") + String(MAX_VALID_VOLTAGE, 0) + "V) - packet discarded";
+        // Build error message using snprintf for better performance
+        char errorMsg[100];
+        snprintf(errorMsg, sizeof(errorMsg), "Invalid voltage reading (>%.0fV) - packet discarded", MAX_VALID_VOLTAGE);
+        device.errorMessage = errorMsg;
         Serial.printf("ERROR: Invalid voltage %.2fV detected in %s packet (threshold: %.0fV) - discarding\n", 
                      voltage, source, MAX_VALID_VOLTAGE);
         return false;
