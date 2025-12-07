@@ -141,8 +141,7 @@ struct VictronDeviceData {
         rawDataLength(0),
         manufacturerId(0),
         modelId(0),
-        encrypted(false),
-        errorMessage("") {
+        encrypted(false) {
         memset(rawManufacturerData, 0, sizeof(rawManufacturerData));
     }
 };
