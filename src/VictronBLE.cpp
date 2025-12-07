@@ -866,16 +866,20 @@ void VictronBLE::mergeDeviceData(const VictronDeviceData& newData, VictronDevice
     if (!newData.name.isEmpty()) {
         existingData.name = newData.name;
     } else {
-        Serial.printf("Retaining existing device name '%s' for %s (new name empty)\n", 
-                     existingData.name.c_str(), existingData.address.c_str());
+        Serial.print("Retaining existing device name '");
+        Serial.print(existingData.name);
+        Serial.print("' for ");
+        Serial.print(existingData.address);
+        Serial.println(" (new name empty)");
     }
     
     // Update type only if new type is not DEVICE_UNKNOWN (type is derived from name)
     if (newData.type != DEVICE_UNKNOWN) {
         existingData.type = newData.type;
     } else {
-        Serial.printf("Retaining existing device type for %s (new type unknown)\n", 
-                     existingData.address.c_str());
+        Serial.print("Retaining existing device type for ");
+        Serial.print(existingData.address);
+        Serial.println(" (new type unknown)");
     }
     
     // Always update these fields regardless of parsing success
