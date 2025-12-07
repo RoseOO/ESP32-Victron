@@ -14,10 +14,16 @@
 #define SOLAR_CONTROLLER_PAYLOAD_SIZE 16
 #define DCDC_CONVERTER_PAYLOAD_SIZE 16
 
-// Voltage sanity check threshold (in volts)
-// Packets with voltage readings exceeding this value will be discarded
+// Voltage sanity check thresholds (in volts)
+// Packets with voltage readings outside this range will be discarded
 // as they indicate clearly incorrect data
 #define MAX_VALID_VOLTAGE 30.0f
+#define MIN_VALID_VOLTAGE -30.0f
+
+// Temperature sanity check threshold (in Celsius)
+// Packets with temperature readings exceeding this value will be discarded
+// as they indicate clearly incorrect data
+#define MAX_VALID_TEMPERATURE 50.0f
 
 // Device Types
 enum VictronDeviceType {
@@ -204,6 +210,11 @@ private:
     // Returns true if voltage is valid, false otherwise
     // If invalid, sets device.dataValid to false and logs an error
     bool validateVoltage(float voltage, const char* source, VictronDeviceData& device);
+    
+    // Helper function to validate temperature readings
+    // Returns true if temperature is valid, false otherwise
+    // If invalid, sets device.dataValid to false and logs an error
+    bool validateTemperature(float temperature, const char* source, VictronDeviceData& device);
     
     // Helper function to normalize MAC addresses for comparison
     // Removes colons and converts to lowercase
