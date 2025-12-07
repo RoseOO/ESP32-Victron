@@ -181,17 +181,21 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // For unencrypted data: payload starts at byte 5 (after manufacturer ID, model ID, and readout type)
     size_t payloadStart = isEncrypted ? 10 : 5;
     
-    // The decrypted/unencrypted payload contains a 16-byte fixed structure
+    // The decrypted/unencrypted payload contains a fixed structure
     // The structure varies by device type (SmartShunt vs Solar Controller vs DC-DC, etc.)
     // According to the reference implementation, we need to parse this as a fixed structure,
     // NOT as TLV records
+    // Note: SmartShunt uses 15 bytes, while Solar Controller and DC-DC use 16 bytes
     
-    if (length < payloadStart + 16) {
+    // Determine minimum required bytes based on device type
+    size_t minPayloadBytes = (device.type == DEVICE_SMART_SHUNT) ? 15 : 16;
+    
+    if (length < payloadStart + minPayloadBytes) {
         Serial.printf("Warning: Insufficient data for fixed structure parsing (%d bytes, need %d)\n", 
-                     length, payloadStart + 16);
+                     length, payloadStart + minPayloadBytes);
     }
     
-    // Point to the 16-byte fixed structure payload
+    // Point to the fixed structure payload (size varies by device type)
     const uint8_t* output = &dataToProcess[payloadStart];
     size_t outputLen = length - payloadStart;
     
@@ -478,11 +482,11 @@ uint16_t VictronBLE::extractUnsigned10(const uint8_t* data, int startByte) {
            ((data[startByte + 1] & 0x30) << 4);    // bits 8-9 (bits 4-5 of byte shifted to 8-9)
 }
 
-// Parse SmartShunt data (16-byte fixed structure)
+// Parse SmartShunt data (15-byte fixed structure)
 // Based on VBM.cpp from reference implementation
 void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device) {
-    if (length < 16) {
-        Serial.printf("SmartShunt: Insufficient data (%d bytes, need 16)\n", length);
+    if (length < 15) {
+        Serial.printf("SmartShunt: Insufficient data (%d bytes, need 15)\n", length);
         return;
     }
     
