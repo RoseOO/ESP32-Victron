@@ -226,9 +226,9 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## Getting Help
 
-- 💬 **Discussions**: Ask questions in GitHub Discussions
-- 📧 **Contact**: Open an issue for specific problems
-- 📖 **Docs**: Read existing documentation thoroughly
+- **Discussions**: Ask questions in GitHub Discussions
+- **Contact**: Open an issue for specific problems
+- **Docs**: Read existing documentation thoroughly
 
 ## Recognition
 
@@ -257,4 +257,4 @@ Contributors will be recognized in:
 
 Don't hesitate to ask! Open an issue or discussion if you're unsure about anything.
 
-Thank you for contributing to ESP32-Victron! 🙏
+Thank you for contributing to ESP32-Victron!

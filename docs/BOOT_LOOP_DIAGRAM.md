@@ -21,16 +21,16 @@ Power On
 │  begins...   │
 └──────┬───────┘
        │
-       ├─► M5.begin()                        ✓ OK (~25 KB RAM)
+       ├─► M5.begin()                        OK (~25 KB RAM)
        │
-       ├─► victron = new VictronBLE()        ✓ OK (~45 KB RAM)
+       ├─► victron = new VictronBLE()        OK (~45 KB RAM)
        │
-       ├─► webServer = new WebConfigServer() ✓ OK (~5 KB RAM)
+       ├─► webServer = new WebConfigServer() OK (~5 KB RAM)
        │
-       ├─► webServer->begin()                ✗ FAIL!
+       ├─► webServer->begin()                FAIL!
        │      │
-       │      ├─► Load INDEX_HTML (~25 KB)   ✗ Out of memory!
-       │      └─► Load MONITOR_HTML (~9 KB)  ✗ Out of memory!
+       │      ├─► Load INDEX_HTML (~25 KB)   Out of memory!
+       │      └─► Load MONITOR_HTML (~9 KB)  Out of memory!
        │
        ▼
    ┌────────────────┐
@@ -67,20 +67,20 @@ Power On
 │  begins...   │
 └──────┬───────┘
        │
-       ├─► M5.begin()                        ✓ OK (~25 KB RAM)
+       ├─► M5.begin()                        OK (~25 KB RAM)
        │
-       ├─► victron = new VictronBLE()        ✓ OK (~45 KB RAM)
+       ├─► victron = new VictronBLE()        OK (~45 KB RAM)
        │
-       ├─► webServer = new WebConfigServer() ✓ OK (~5 KB RAM)
+       ├─► webServer = new WebConfigServer() OK (~5 KB RAM)
        │
-       ├─► webServer->begin()                ✓ OK
+       ├─► webServer->begin()                OK
        │      │
-       │      ├─► LittleFS.begin()           ✓ Mount filesystem
+       │      ├─► LittleFS.begin()            Mount filesystem
        │      │   (HTML stays in flash)      (0 KB RAM used!)
        │      │
-       │      └─► startServer()              ✓ Setup routes
+       │      └─► startServer()               Setup routes
        │
-       ├─► mqttPublisher->begin()            ✓ OK (~15 KB RAM)
+       ├─► mqttPublisher->begin()            OK (~15 KB RAM)
        │
        ▼
    ┌────────────────┐
@@ -137,8 +137,8 @@ When user requests web page:
 │  └─ Message queues                              │
 │                                                 │
 │  ╔═══════════════════════════════════════╗      │
-│  ║ INDEX_HTML (~25 KB)   ✗ PROBLEM!     ║      │
-│  ║ MONITOR_HTML (~9 KB)  ✗ PROBLEM!     ║      │
+│  ║ INDEX_HTML (~25 KB)    PROBLEM!     ║      │
+│  ║ MONITOR_HTML (~9 KB)   PROBLEM!     ║      │
 │  ╚═══════════════════════════════════════╝      │
 │                                                 │
 │  Other allocations          ~30 KB              │
@@ -147,7 +147,7 @@ When user requests web page:
 │  └─ Static variables                            │
 │                                                 │
 │  ╔═══════════════════════════════════════╗      │
-│  ║ Free RAM: ~121 KB    ✗ INSUFFICIENT! ║      │
+│  ║ Free RAM: ~121 KB     INSUFFICIENT! ║      │
 │  ╚═══════════════════════════════════════╝      │
 │                                                 │
 │  TOTAL: 320 KB = CRASH!                         │
@@ -169,10 +169,10 @@ When user requests web page:
 │  Other allocations          ~26 KB              │
 │                                                 │
 │  ╔═══════════════════════════════════════╗      │
-│  ║ Free RAM: ~155 KB    ✓ SUFFICIENT!   ║      │
+│  ║ Free RAM: ~155 KB     SUFFICIENT!   ║      │
 │  ╚═══════════════════════════════════════╝      │
 │                                                 │
-│  TOTAL: 165 KB used, 155 KB free ✓             │
+│  TOTAL: 165 KB used, 155 KB free              │
 └─────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────┐
@@ -186,8 +186,8 @@ When user requests web page:
 │                                                 │
 │  ╔═══════════════════════════════════════╗      │
 │  ║ LittleFS Filesystem    ~50 KB         ║      │
-│  ║ ├─ index.html    25 KB   ✓           ║      │
-│  ║ ├─ monitor.html   9 KB   ✓           ║      │
+│  ║ ├─ index.html    25 KB              ║      │
+│  ║ ├─ monitor.html   9 KB              ║      │
 │  ║ └─ overhead      16 KB                ║      │
 │  ╚═══════════════════════════════════════╝      │
 │                                                 │
@@ -244,7 +244,7 @@ When user requests web page:
    │  --target       │──────────►  Upload firmware
    │  upload         │              (includes HTML)
    └─────────────────┘
-                                    ✓ Done!
+                                     Done!
 ```
 
 ### After Fix (2 steps)
@@ -258,7 +258,7 @@ When user requests web page:
    │  --target       │──────────►  Upload firmware
    │  upload         │              (no HTML)
    └─────────────────┘
-                                    ✓ Firmware uploaded
+                                     Firmware uploaded
    
    Step 2:
    ┌─────────────────┐
@@ -266,9 +266,9 @@ When user requests web page:
    │  --target       │──────────►  Upload filesystem
    │  uploadfs       │              (HTML files)
    └─────────────────┘
-                                    ✓ Filesystem uploaded
+                                     Filesystem uploaded
                                     
-                                    ✓✓ Ready to use!
+                                     Ready to use!
 ```
 
 ## Benefits Summary
@@ -278,25 +278,25 @@ When user requests web page:
 │                   Benefits                      │
 ├─────────────────────────────────────────────────┤
 │                                                 │
-│  ✓ No more boot loops                           │
+│   No more boot loops                           │
 │    └─ Stable, reliable booting                  │
 │                                                 │
-│  ✓ Reduced RAM usage by ~34 KB                  │
+│   Reduced RAM usage by ~34 KB                  │
 │    └─ More memory for future features           │
 │                                                 │
-│  ✓ Smaller firmware size by ~34 KB              │
+│   Smaller firmware size by ~34 KB              │
 │    └─ Faster uploads, more code space           │
 │                                                 │
-│  ✓ Better maintainability                       │
+│   Better maintainability                       │
 │    └─ HTML can be updated without recompiling   │
 │                                                 │
-│  ✓ Separation of concerns                       │
+│   Separation of concerns                       │
 │    └─ Web assets separate from code             │
 │                                                 │
-│  ✓ Scalability                                  │
+│   Scalability                                  │
 │    └─ Can add more web files (images, CSS, JS)  │
 │                                                 │
-│  ✓ Clear error messages                         │
+│   Clear error messages                         │
 │    └─ Users know if filesystem not uploaded     │
 │                                                 │
 └─────────────────────────────────────────────────┘

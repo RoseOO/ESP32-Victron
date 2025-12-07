@@ -21,7 +21,7 @@ When you first access the web interface, you see:
 ┌───────────────────────────────────────────────┐
 │  [Purple Gradient Background]                 │
 │                                               │
-│     🔧 Victron BLE Configuration              │
+│      Victron BLE Configuration              │
 │     Configure your Victron devices and        │
 │     encryption keys                           │
 │                                               │
@@ -31,10 +31,10 @@ When you first access the web interface, you see:
 ### Device List Section
 ```
 ┌───────────────────────────────────────────────┐
-│  📱 Configured Devices                         │
+│   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Note: Add your Victron devices with their │
+│  Note: Add your Victron devices with their │
 │  BLE MAC addresses. If your device uses       │
 │  encryption, enter the 32-character           │
 │  encryption key from the VictronConnect app.  │
@@ -42,16 +42,16 @@ When you first access the web interface, you see:
 │  ┌─────────────────────────────────────────┐ │
 │  │ SmartShunt 500A                         │ │
 │  │ AA:BB:CC:DD:EE:FF                       │ │
-│  │ 🔓 Instant Readout                      │ │
+│  │  Instant Readout                      │ │
 │  │                         [Edit] [Delete] │ │
 │  ├─────────────────────────────────────────┤ │
 │  │ SmartSolar MPPT 100/20                  │ │
 │  │ 11:22:33:44:55:66                       │ │
-│  │ 🔒 Encrypted                            │ │
+│  │  Encrypted                            │ │
 │  │                         [Edit] [Delete] │ │
 │  └─────────────────────────────────────────┘ │
 │                                               │
-│  [➕ Add Device]                               │
+│  [Add Device]                               │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
@@ -59,13 +59,13 @@ When you first access the web interface, you see:
 ### WiFi Configuration Section
 ```
 ┌───────────────────────────────────────────────┐
-│  📡 WiFi Configuration                         │
+│   WiFi Configuration                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Current Mode: Access Point                │
+│  Note: Current Mode: Access Point                │
 │     IP Address: 192.168.4.1                   │
 │                                               │
-│  [⚙️ Configure WiFi]                           │
+│  [Configure WiFi]                           │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
@@ -114,7 +114,7 @@ When clicking "Configure WiFi", you see:
 ║                                             ║
 ║  Mode                                       ║
 ║  ┌─────────────────────────────────────┐   ║
-║  │ ▼ Access Point (AP)          ✓      │   ║
+║  │ ▼ Access Point (AP)                │   ║
 ║  │   Station (Connect to WiFi)         │   ║
 ║  └─────────────────────────────────────┘   ║
 ║                                             ║
@@ -124,7 +124,7 @@ When clicking "Configure WiFi", you see:
 ║  └─────────────────────────────────────┘   ║
 ║  Minimum 8 characters                      ║
 ║                                             ║
-║  ⚠️ Warning: Changing WiFi settings         ║
+║  Warning: Changing WiFi settings         ║
 ║  requires a restart to take effect.        ║
 ║                                             ║
 ║         [Cancel]  [Save & Restart]          ║
@@ -141,7 +141,7 @@ For Station mode, the form changes to show:
 ║                                             ║
 ║  Mode                                       ║
 ║  ┌─────────────────────────────────────┐   ║
-║  │ ▼ Station (Connect to WiFi)  ✓      │   ║
+║  │ ▼ Station (Connect to WiFi)        │   ║
 ║  │   Access Point (AP)                 │   ║
 ║  └─────────────────────────────────────┘   ║
 ║                                             ║
@@ -155,7 +155,7 @@ For Station mode, the form changes to show:
 ║  │ •••••••                             │   ║
 ║  └─────────────────────────────────────┘   ║
 ║                                             ║
-║  ⚠️ Warning: Changing WiFi settings         ║
+║  Warning: Changing WiFi settings         ║
 ║  requires a restart to take effect.        ║
 ║                                             ║
 ║         [Cancel]  [Save & Restart]          ║
@@ -169,10 +169,10 @@ When no devices are configured:
 
 ```
 ┌───────────────────────────────────────────────┐
-│  📱 Configured Devices                         │
+│   Configured Devices                         │
 │  ─────────────────────────────────────────    │
 │                                               │
-│  ℹ️ Note: Add your Victron devices...         │
+│  Note: Add your Victron devices...         │
 │                                               │
 │  ┌─────────────────────────────────────────┐ │
 │  │                                         │ │
@@ -182,7 +182,7 @@ When no devices are configured:
 │  │                                         │ │
 │  └─────────────────────────────────────────┘ │
 │                                               │
-│  [➕ Add Device]                               │
+│  [Add Device]                               │
 │                                               │
 └───────────────────────────────────────────────┘
 ```
@@ -190,9 +190,9 @@ When no devices are configured:
 ## Responsive Design
 
 The interface is fully responsive and works on:
-- ✅ Desktop browsers (Chrome, Firefox, Safari, Edge)
-- ✅ Tablet devices (iPad, Android tablets)
-- ✅ Mobile phones (iPhone, Android)
+-  Desktop browsers (Chrome, Firefox, Safari, Edge)
+-  Tablet devices (iPad, Android tablets)
+-  Mobile phones (iPhone, Android)
 
 On mobile, the layout adapts:
 - Device cards stack vertically
@@ -230,12 +230,12 @@ On mobile, the layout adapts:
 
 ## Accessibility Features
 
-- ✅ High contrast text
-- ✅ Clear visual hierarchy
-- ✅ Touch-friendly tap targets (44px minimum)
-- ✅ Keyboard navigation support
-- ✅ Screen reader compatible labels
-- ✅ Color is not the only indicator (icons + text)
+-  High contrast text
+-  Clear visual hierarchy
+-  Touch-friendly tap targets (44px minimum)
+-  Keyboard navigation support
+-  Screen reader compatible labels
+-  Color is not the only indicator (icons + text)
 
 ## Technical Details
 
@@ -246,11 +246,11 @@ On mobile, the layout adapts:
 - No external dependencies
 
 ### Browser Support
-- Chrome/Edge: ✅ Full support
-- Firefox: ✅ Full support
-- Safari: ✅ Full support
-- Mobile browsers: ✅ Full support
-- IE11: ❌ Not supported
+- Chrome/Edge:  Full support
+- Firefox:  Full support
+- Safari:  Full support
+- Mobile browsers:  Full support
+- IE11:  Not supported
 
 ## API Integration
 

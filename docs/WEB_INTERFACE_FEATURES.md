@@ -5,7 +5,7 @@
 **URL:** `http://{device-ip}/`
 
 ### Header
-- Title: "🔧 Victron BLE Configuration"
+- Title: " Victron BLE Configuration"
 - Description: "Configure your Victron devices and encryption keys"
 
 ### Sections
@@ -15,21 +15,21 @@
 - Each device card displays:
   - Device name
   - BLE MAC address
-  - Encryption status (🔒 Encrypted / 🔓 Instant Readout)
+  - Encryption status ( Encrypted /  Instant Readout)
   - Edit and Delete buttons
-- "➕ Add Device" button to add new devices
-- **NEW:** "📊 Live Monitor" button (top right) - links to real-time monitoring page
+- " Add Device" button to add new devices
+- **NEW:** " Live Monitor" button (top right) - links to real-time monitoring page
 
 #### 2. WiFi Configuration
 - Current Mode display (Access Point / Station)
 - IP Address display
-- "⚙️ Configure WiFi" button
+- " Configure WiFi" button
 
 #### 3. Home Assistant / MQTT (NEW)
 - Status display (Enabled/Disabled)
 - Broker address display
-- Connection status (✓ Connected / ✗ Disconnected)
-- "⚙️ Configure MQTT" button
+- Connection status ( Connected /  Disconnected)
+- " Configure MQTT" button
 
 ### Modals
 
@@ -66,8 +66,8 @@
 **URL:** `http://{device-ip}/monitor`
 
 ### Header
-- Title: "📊 Live Monitor"
-- "⚙️ Configuration" button (returns to config page)
+- Title: " Live Monitor"
+- " Configuration" button (returns to config page)
 
 ### Device Grid
 - Responsive card layout (auto-fills based on screen width)
@@ -121,7 +121,7 @@
 ### Typography
 - Clear hierarchy with color-coded text
 - Monospace font for MAC addresses
-- Icons for visual clarity (emojis)
+- Icons for visual clarity
 
 ---
 

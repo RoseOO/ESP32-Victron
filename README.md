@@ -6,7 +6,7 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-blue.svg)](https://platformio.org/)
 [![Arduino](https://img.shields.io/badge/Arduino-compatible-green.svg)](https://www.arduino.cc/)
 
-## 📚 Documentation
+## Documentation
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
 - **[Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)** - Upload web interface files to ESP32 flash
@@ -18,7 +18,7 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to this project
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Quick Install (5 minutes)
 
@@ -29,19 +29,19 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 
 For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
 
-## ✨ Features
+## Features
 
-- **Web Configuration Interface**: 🆕 Configure devices and encryption keys via web browser
+- **Web Configuration Interface**: Configure devices and encryption keys via web browser
   - WiFi Access Point or Station mode
   - Add/edit/delete Victron devices
   - Store encryption keys securely
   - User-friendly responsive interface
-- **Real-Time Web Monitoring**: 🆕 View live data from all devices in web browser
+- **Real-Time Web Monitoring**: View live data from all devices in web browser
   - Auto-refreshing dashboard
   - Multiple device cards with real-time updates
   - Signal strength indicators
   - Works on any device with a web browser
-- **Home Assistant Integration**: 🆕 Push data to Home Assistant via MQTT
+- **Home Assistant Integration**: Push data to Home Assistant via MQTT
   - Automatic device discovery
   - Configure MQTT broker via web interface
   - Supports authentication
@@ -61,7 +61,7 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - AC Output (for Inverters)
   - Input/Output Voltage (for DC-DC Converters)
   - Signal Strength (RSSI)
-- **Encryption Support**: 🆕 Store and manage encryption keys for Victron devices
+- **Encryption Support**: Store and manage encryption keys for Victron devices
 - **Device Switching**: Easily switch between multiple connected Victron devices using the M5 button
 - **Automatic Scanning**: Periodically scans for new devices and updates connections
 - **Compact Display**: Optimized UI for the M5StickC PLUS2's 1.14" LCD screen
@@ -146,20 +146,20 @@ The web interface allows you to:
 - Store encryption keys for encrypted devices
 - Enable/disable individual devices
 - View current configuration
-- **🆕 Monitor live data from all devices**
-- **🆕 Configure MQTT/Home Assistant integration**
+- Monitor live data from all devices
+- Configure MQTT/Home Assistant integration
 
 **Access the web interface:**
 - **Short press** M5 button: Navigate between devices
 - **Long press** M5 button (1 second): View WiFi info and IP address
 - Open web browser to the displayed IP address
-- Click "📊 Live Monitor" to see real-time data from all devices
+- Click "Live Monitor" to see real-time data from all devices
 
 ### Home Assistant Integration
 
 To integrate with Home Assistant:
 1. Access the web interface
-2. Click "⚙️ Configure MQTT" in the Home Assistant / MQTT section
+2. Click "Configure MQTT" in the Home Assistant / MQTT section
 3. Enter your MQTT broker details:
    - Broker address (e.g., `192.168.1.100`)
    - Port (default: `1883`)
@@ -251,7 +251,7 @@ This project is open source and available under the MIT License.
 
 ## Star History
 
-If you find this project useful, please consider giving it a star ⭐ on GitHub!
+If you find this project useful, please consider giving it a star on GitHub!
 
 ## Disclaimer
 
@@ -259,4 +259,4 @@ This is an unofficial project and is not affiliated with or endorsed by Victron 
 
 ---
 
-**Made with ❤️ for the Victron and ESP32 community**
+**Made with care for the Victron and ESP32 community**
