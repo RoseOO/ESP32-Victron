@@ -880,6 +880,9 @@ extern int lcdScrollRate;
 extern String lcdOrientation;
 extern bool lcdAutoScroll;
 extern void saveLCDConfig();
+extern bool pendingReboot;
+extern unsigned long rebootScheduledTime;
+extern const unsigned long REBOOT_DELAY;
 
 void WebConfigServer::handleGetLCDConfig(AsyncWebServerRequest *request) {
     String json = "{";
@@ -939,9 +942,9 @@ void WebConfigServer::handleSetLCDConfig(AsyncWebServerRequest *request) {
     if (orientationChanged) {
         // Send response indicating reboot is needed
         request->send(200, "application/json", "{\"success\":true,\"rebootRequired\":true}");
-        // Schedule a reboot after a short delay to allow response to be sent
-        delay(1000);
-        ESP.restart();
+        // Schedule a reboot via flag (handled in main loop)
+        pendingReboot = true;
+        rebootScheduledTime = millis();
     } else {
         request->send(200, "application/json", "{\"success\":true}");
     }

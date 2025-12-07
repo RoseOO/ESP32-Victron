@@ -16,22 +16,27 @@ VictronBLE *victron = nullptr;
 WebConfigServer *webServer = nullptr;
 MQTTPublisher *mqttPublisher = nullptr;
 
+// Reboot flag for orientation changes
+bool pendingReboot = false;
+unsigned long rebootScheduledTime = 0;
+const unsigned long REBOOT_DELAY = 2000;  // 2 seconds delay before reboot
+
 std::vector<String> deviceAddresses;
 int currentDeviceIndex = 0;
 unsigned long lastScanTime = 0;
 unsigned long lastDisplayUpdate = 0;
 unsigned long lastDeviceSwitch = 0;  // Track when device was last switched
 unsigned long lastButtonPressTime = 0;  // For debouncing
-unsigned long lastVerticalScroll = 0;  // Track when vertical scroll last occurred
+unsigned long lastVerticalScroll = 0;  // Track when vertical scroll last occurred (TODO: implement vertical scrolling)
 const unsigned long SCAN_INTERVAL = 30000;  // Scan every 30 seconds
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;  // Update display every second
 const unsigned long BUTTON_DEBOUNCE = 500;  // Debounce period in ms
 const unsigned long LONG_PRESS_DURATION = 1000;  // Long press duration in ms
-const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every 3 seconds
+const unsigned long VERTICAL_SCROLL_INTERVAL = 3000;  // Scroll vertically every 3 seconds (TODO: implement)
 
 bool scanning = false;
 bool webConfigMode = false;  // Toggle between normal mode and web config display
-int verticalScrollOffset = 0;  // Current vertical scroll position
+int verticalScrollOffset = 0;  // Current vertical scroll position (TODO: implement actual scrolling)
 
 // Buzzer alarm configuration
 Preferences buzzerPreferences;
@@ -418,6 +423,7 @@ void drawDisplay() {
     
     // Calculate layout constants - use fixed sizes for headers regardless of lcdFontSize setting
     const int TITLE_FONT_SIZE = 1;  // Keep title font size constant
+    const int FONT_HEIGHT_PIXELS = 8;  // Height of a character in pixels at font size 1
     const int valueColumnX = 80 * lcdFontSize;
     const int lineSpacing = 15 * lcdFontSize;
     const int screenWidth = (lcdOrientation == "portrait") ? 135 : 240;
@@ -526,7 +532,7 @@ void drawDisplay() {
     
     if (deviceChanged || device->voltage != lastVoltage || device->dataValid != lastDataValid) {
         // Clear value area before redrawing
-        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
         M5.Lcd.setTextSize(lcdFontSize);
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(valueColumnX, y);
@@ -547,7 +553,7 @@ void drawDisplay() {
     M5.Lcd.print("Current:");
     
     if (deviceChanged || device->current != lastCurrent || device->dataValid != lastDataValid) {
-        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+        M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
         M5.Lcd.setTextSize(lcdFontSize);
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.setCursor(valueColumnX, y);
@@ -568,7 +574,7 @@ void drawDisplay() {
         M5.Lcd.print("Power:");
         
         if (deviceChanged || device->power != lastPower) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
@@ -586,7 +592,7 @@ void drawDisplay() {
         M5.Lcd.print("Battery:");
         
         if (deviceChanged || device->batterySOC != lastSOC) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             uint16_t color = WHITE;
             if (device->batterySOC <= 20) {
@@ -612,7 +618,7 @@ void drawDisplay() {
         M5.Lcd.print("Temp:");
         
         if (deviceChanged || device->temperature != lastTemp) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
@@ -630,7 +636,7 @@ void drawDisplay() {
         M5.Lcd.print("AC Out:");
         
         if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
@@ -645,7 +651,7 @@ void drawDisplay() {
             M5.Lcd.print("AC Pwr:");
             
             if (deviceChanged) {
-                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+                M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
                 M5.Lcd.setTextSize(lcdFontSize);
                 M5.Lcd.setTextColor(WHITE, BLACK);
                 M5.Lcd.setCursor(valueColumnX, y);
@@ -663,7 +669,7 @@ void drawDisplay() {
         M5.Lcd.print("In:");
         
         if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
@@ -679,7 +685,7 @@ void drawDisplay() {
         M5.Lcd.print("Out:");
         
         if (deviceChanged) {
-            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, 8 * lcdFontSize, BLACK);
+            M5.Lcd.fillRect(valueColumnX, y, screenWidth - valueColumnX, FONT_HEIGHT_PIXELS * lcdFontSize, BLACK);
             M5.Lcd.setTextSize(lcdFontSize);
             M5.Lcd.setTextColor(WHITE, BLACK);
             M5.Lcd.setCursor(valueColumnX, y);
@@ -738,6 +744,12 @@ void drawDisplay() {
 void loop() {
     M5.update();
     unsigned long currentTime = millis();
+    
+    // Check for pending reboot (from orientation change)
+    if (pendingReboot && (currentTime - rebootScheduledTime > REBOOT_DELAY)) {
+        Serial.println("Rebooting due to orientation change...");
+        ESP.restart();
+    }
     
     // Handle ArduinoOTA updates
     ArduinoOTA.handle();
