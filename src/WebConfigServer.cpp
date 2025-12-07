@@ -130,21 +130,11 @@ void WebConfigServer::startServer() {
         handleDebug(request);
     });
     
-    // API endpoints
-    server->on("/api/devices", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        handleGetDevices(request);
-    });
-    
+    // API endpoints 
+    // IMPORTANT: Register more specific routes BEFORE generic routes
+    // to prevent route matching issues in ESPAsyncWebServer
     server->on("/api/devices/live", HTTP_GET, [this](AsyncWebServerRequest *request) {
         handleGetLiveData(request);
-    });
-    
-    server->on("/api/debug", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        handleGetDebugData(request);
-    });
-    
-    server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        handleAddDevice(request);
     });
     
     server->on("/api/devices/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
@@ -153,6 +143,18 @@ void WebConfigServer::startServer() {
     
     server->on("/api/devices/delete", HTTP_POST, [this](AsyncWebServerRequest *request) {
         handleDeleteDevice(request);
+    });
+    
+    server->on("/api/devices", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        handleAddDevice(request);
+    });
+    
+    server->on("/api/devices", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetDevices(request);
+    });
+    
+    server->on("/api/debug", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        handleGetDebugData(request);
     });
     
     server->on("/api/wifi", HTTP_GET, [this](AsyncWebServerRequest *request) {
