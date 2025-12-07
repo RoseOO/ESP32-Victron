@@ -36,7 +36,13 @@ void VictronBLE::begin() {
     
     pBLEScan = NimBLEDevice::getScan();
     pBLEScan->setAdvertisedDeviceCallbacks(new VictronAdvertisedDeviceCallbacks(this), false);
+    // Use active scanning for faster device discovery
+    // Note: Victron devices broadcast BLE advertisements at their own rate (typically 1-2 seconds)
+    // We cannot "request" faster updates as these are advertisement packets, not connection-based
     pBLEScan->setActiveScan(true);
+    // Scan interval: 100ms (how often to switch channels)
+    // Scan window: 99ms (how long to listen on each channel)
+    // This means we're scanning almost continuously for maximum responsiveness
     pBLEScan->setInterval(100);
     pBLEScan->setWindow(99);
 }
