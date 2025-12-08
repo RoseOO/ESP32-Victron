@@ -166,9 +166,71 @@
             opacity: 0.5;
         }
         @media (max-width: 600px) {
-            .device-item { flex-direction: column; align-items: flex-start; }
-            .device-actions { margin-top: 10px; width: 100%; }
-            .device-actions button { margin: 5px 5px 0 0; }
+            body { padding: 10px; }
+            .container { border-radius: 8px; }
+            .header { 
+                padding: 20px 15px; 
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            .header h1 { font-size: 22px; text-align: center; }
+            .header p { font-size: 14px; }
+            .header > div { 
+                display: flex; 
+                flex-direction: column;
+                gap: 8px;
+            }
+            .header > div a {
+                width: 100%;
+                text-align: center;
+                padding: 12px 20px;
+            }
+            .content { padding: 20px 15px; }
+            .section h2 { font-size: 18px; }
+            .device-item { 
+                flex-direction: column; 
+                align-items: flex-start;
+                padding: 12px;
+            }
+            .device-actions { 
+                margin-top: 10px; 
+                width: 100%;
+                display: flex;
+                gap: 8px;
+            }
+            .device-actions button { 
+                flex: 1;
+                margin: 0;
+                padding: 10px 12px;
+            }
+            .modal-content {
+                width: 95%;
+                padding: 20px;
+                max-height: 85vh;
+            }
+            .modal-header h3 { font-size: 20px; }
+            .form-group input,
+            .form-group select {
+                font-size: 16px; /* Prevents iOS zoom on input focus */
+            }
+            .btn-primary {
+                width: 100%;
+                padding: 14px 25px;
+                font-size: 16px;
+            }
+            .modal-buttons {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .modal-buttons button {
+                width: 100%;
+                padding: 12px 20px;
+            }
+            .info-box { 
+                padding: 12px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>

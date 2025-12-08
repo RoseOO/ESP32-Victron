@@ -191,6 +191,70 @@
         .toggle-switch input:checked + .toggle-slider:before {
             transform: translateX(26px);
         }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { border-radius: 8px; }
+            .header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .header h1 { font-size: 20px; }
+            .header > div {
+                display: flex;
+                gap: 8px;
+                width: 100%;
+            }
+            .nav-btn {
+                flex: 1;
+                text-align: center;
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+            .content { padding: 20px 15px; }
+            .settings-section {
+                padding: 15px;
+            }
+            .settings-title { font-size: 16px; }
+            .setting-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 12px 0;
+            }
+            .setting-label { font-size: 14px; }
+            .setting-description { font-size: 11px; }
+            .devices-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .device-card {
+                padding: 15px;
+            }
+            .device-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .device-name { font-size: 16px; }
+            .device-type { font-size: 11px; }
+            .signal {
+                align-self: flex-end;
+                margin-top: -24px;
+            }
+            .data-row {
+                padding: 6px 0;
+                font-size: 14px;
+            }
+            .data-label,
+            .data-value {
+                font-size: 14px;
+            }
+            .last-update {
+                font-size: 11px;
+                margin-top: 15px;
+            }
+        }
     </style>
 </head>
 <body>

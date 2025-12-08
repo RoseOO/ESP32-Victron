@@ -196,6 +196,7 @@ private:
     // SmartShunt: 15 bytes, Solar Controller: 16 bytes, DC-DC Converter: 16 bytes
     void parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device);
+    void parseBlueSmartChargerData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseTLVRecords(const uint8_t* data, size_t length, size_t startPos, VictronDeviceData& device);
     
