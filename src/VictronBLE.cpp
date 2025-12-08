@@ -230,10 +230,8 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // Parse based on device type
     if (device.type == DEVICE_SMART_SHUNT) {
         parseSmartShuntData(output, outputLen, device);
-    } else if (device.type == DEVICE_SMART_SOLAR) {
-        parseSolarControllerData(output, outputLen, device);
-    } else if (device.type == DEVICE_BLUE_SMART_CHARGER) {
-        // Blue Smart Chargers use the same format as Solar Controllers (16-byte payload)
+    } else if (device.type == DEVICE_SMART_SOLAR || device.type == DEVICE_BLUE_SMART_CHARGER) {
+        // Both Solar Controllers and Blue Smart Chargers use the same 16-byte payload format
         parseSolarControllerData(output, outputLen, device);
     } else if (device.type == DEVICE_DCDC_CONVERTER) {
         parseDCDCConverterData(output, outputLen, device);
