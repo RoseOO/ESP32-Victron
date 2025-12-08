@@ -193,7 +193,7 @@ private:
     float decodeValue(const uint8_t* data, int len, float scale);
     
     // Device-specific parsing functions for fixed structures
-    // SmartShunt: 15 bytes, Solar Controller: 16 bytes, DC-DC Converter: 16 bytes
+    // SmartShunt: 15 bytes, Solar Controller & Blue Smart Charger: 16 bytes, DC-DC Converter: 16 bytes
     void parseSmartShuntData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device);
     void parseDCDCConverterData(const uint8_t* output, size_t length, VictronDeviceData& device);

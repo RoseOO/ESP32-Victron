@@ -123,7 +123,8 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
         return DEVICE_SMART_SHUNT;
     } else if (lowerName.indexOf("solar") >= 0 || lowerName.indexOf("mppt") >= 0) {
         return DEVICE_SMART_SOLAR;
-    } else if (lowerName.indexOf("charger") >= 0 || lowerName.indexOf("blue") >= 0) {
+    } else if ((lowerName.indexOf("blue") >= 0 && lowerName.indexOf("charger") >= 0) || 
+               lowerName.indexOf("smartcharger") >= 0 || lowerName.indexOf("smart charger") >= 0) {
         return DEVICE_BLUE_SMART_CHARGER;
     } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0 || 
                lowerName.indexOf("multiplus") >= 0 || lowerName.indexOf("quattro") >= 0) {
@@ -205,7 +206,8 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     size_t expectedPayloadBytes;
     if (device.type == DEVICE_SMART_SHUNT) {
         expectedPayloadBytes = SMART_SHUNT_PAYLOAD_SIZE;
-    } else if (device.type == DEVICE_SMART_SOLAR) {
+    } else if (device.type == DEVICE_SMART_SOLAR || device.type == DEVICE_BLUE_SMART_CHARGER) {
+        // Both Solar Controllers and Blue Smart Chargers use 16-byte payloads
         expectedPayloadBytes = SOLAR_CONTROLLER_PAYLOAD_SIZE;
     } else if (device.type == DEVICE_DCDC_CONVERTER) {
         expectedPayloadBytes = DCDC_CONVERTER_PAYLOAD_SIZE;
@@ -228,7 +230,8 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
     // Parse based on device type
     if (device.type == DEVICE_SMART_SHUNT) {
         parseSmartShuntData(output, outputLen, device);
-    } else if (device.type == DEVICE_SMART_SOLAR) {
+    } else if (device.type == DEVICE_SMART_SOLAR || device.type == DEVICE_BLUE_SMART_CHARGER) {
+        // Both Solar Controllers and Blue Smart Chargers use the same 16-byte payload format
         parseSolarControllerData(output, outputLen, device);
     } else if (device.type == DEVICE_DCDC_CONVERTER) {
         parseDCDCConverterData(output, outputLen, device);
@@ -648,6 +651,7 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
 }
 
 // Parse Solar Controller data (16-byte fixed structure, but handle partial data)
+// Blue Smart Chargers also use this same format
 // Based on VSC.cpp from reference implementation
 void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device) {
     // Parse whatever fields are available based on actual data length
@@ -716,7 +720,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
         }
     }
     
-    Serial.printf("SolarController parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
+    Serial.printf("%s parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n",
+                 (device.type == DEVICE_BLUE_SMART_CHARGER) ? "BlueSmartCharger" : "SolarController",
                  device.voltage, device.current, device.pvPower, device.yieldToday, 
                  device.deviceState, device.chargerError);
 }
