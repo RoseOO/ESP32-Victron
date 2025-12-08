@@ -48,11 +48,9 @@ void WebConfigServer::begin() {
 void WebConfigServer::startWiFi() {
     Serial.println("Starting WiFi...");
     
-    // Configure WiFi for optimal stability and connection reliability
     // Disable persistent storage to avoid credential conflicts
+    // This prevents the ESP32 from storing WiFi credentials in flash
     WiFi.persistent(false);
-    // Enable auto-reconnect for better stability
-    WiFi.setAutoReconnect(true);
     
     if (wifiConfig.apMode) {
         // Access Point mode
@@ -82,8 +80,13 @@ void WebConfigServer::startWiFi() {
         
         WiFi.mode(WIFI_STA);
         
+        // Enable auto-reconnect for better connection stability (Station mode only)
+        WiFi.setAutoReconnect(true);
+        
         // Disable WiFi power saving to prevent authentication issues
         // This ensures the ESP32 stays awake during the authentication handshake
+        // Note: This increases power consumption but is necessary for reliable connections.
+        // The M5StickC PLUS2 is typically USB-powered, so this is acceptable.
         WiFi.setSleep(false);
         
         WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.password.c_str());
