@@ -48,6 +48,11 @@ void WebConfigServer::begin() {
 void WebConfigServer::startWiFi() {
     Serial.println("Starting WiFi...");
     
+    // Disable WiFi library's internal credential storage to avoid conflicts
+    // Note: WiFi settings are still persistent via the Preferences API (saveWiFiConfig/loadWiFiConfig)
+    // This only prevents the WiFi library from storing duplicate credentials that can cause issues
+    WiFi.persistent(false);
+    
     if (wifiConfig.apMode) {
         // Access Point mode
         Serial.println("Starting in AP mode...");
@@ -69,7 +74,22 @@ void WebConfigServer::startWiFi() {
     } else {
         // Station mode
         Serial.println("Connecting to WiFi...");
+        
+        // Ensure clean state before connecting
+        WiFi.disconnect(true);
+        delay(100);
+        
         WiFi.mode(WIFI_STA);
+        
+        // Enable auto-reconnect for better connection stability (Station mode only)
+        WiFi.setAutoReconnect(true);
+        
+        // Disable WiFi power saving to prevent authentication issues
+        // This ensures the ESP32 stays awake during the authentication handshake
+        // Note: This increases power consumption but is necessary for reliable connections.
+        // The M5StickC PLUS2 is typically USB-powered, so this is acceptable.
+        WiFi.setSleep(false);
+        
         WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.password.c_str());
         
         int attempts = 0;
@@ -86,6 +106,11 @@ void WebConfigServer::startWiFi() {
         } else {
             Serial.println("\nWiFi connection failed, falling back to AP mode");
             wifiConfig.apMode = true;
+            
+            // Disconnect and clean up before switching to AP mode
+            WiFi.disconnect(true);
+            delay(100);
+            
             WiFi.mode(WIFI_AP);
             
             bool apStarted = WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
