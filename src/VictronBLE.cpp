@@ -233,7 +233,7 @@ bool VictronBLE::parseVictronAdvertisement(const uint8_t* data, size_t length, V
         parseSolarControllerData(output, outputLen, device);
     } else if (device.type == DEVICE_BLUE_SMART_CHARGER) {
         // Blue Smart Chargers use the same format as Solar Controllers (16-byte payload)
-        parseBlueSmartChargerData(output, outputLen, device);
+        parseSolarControllerData(output, outputLen, device);
     } else if (device.type == DEVICE_DCDC_CONVERTER) {
         parseDCDCConverterData(output, outputLen, device);
     } else {
@@ -652,6 +652,7 @@ void VictronBLE::parseSmartShuntData(const uint8_t* output, size_t length, Victr
 }
 
 // Parse Solar Controller data (16-byte fixed structure, but handle partial data)
+// Blue Smart Chargers also use this same format
 // Based on VSC.cpp from reference implementation
 void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, VictronDeviceData& device) {
     // Parse whatever fields are available based on actual data length
@@ -720,78 +721,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
         }
     }
     
-    Serial.printf("SolarController parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
+    Serial.printf("SolarController/Charger parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
                  device.voltage, device.current, device.pvPower, device.yieldToday, 
-                 device.deviceState, device.chargerError);
-}
-
-// Parse Blue Smart Charger data (16-byte fixed structure, but handle partial data)
-// Blue Smart Chargers use the same format as Solar Controllers
-// Based on reference implementation (VSC.cpp) from chrisj7903/Read-Victron-advertised-data
-// Data layout: state(8), error(8), battV(16), battA(16), yieldToday(16), pvPower(16)
-void VictronBLE::parseBlueSmartChargerData(const uint8_t* output, size_t length, VictronDeviceData& device) {
-    // Parse whatever fields are available based on actual data length
-    // Each field is only parsed if we have enough bytes for it
-    
-    // Device State (byte 0)
-    if (length >= 1) {
-        device.deviceState = output[0];
-    }
-    
-    // Charger Error (byte 1)
-    if (length >= 2) {
-        device.chargerError = output[1];
-    }
-    
-    // Battery Voltage (bytes 2-3, signed 16-bit, units: 10mV)
-    // This is the charger output voltage
-    if (length >= 4) {
-        int16_t battMv10 = extractSigned16(output, 2);
-        if (battMv10 != 0x7FFF) {
-            float voltage = battMv10 / 100.0f;  // convert 10mV to V
-            if (!validateVoltage(voltage, "BlueSmartCharger", device)) {
-                return;
-            }
-            device.voltage = voltage;
-            device.hasVoltage = true;
-        }
-    }
-    
-    // Battery Current (bytes 4-5, signed 16-bit, units: 100mA)
-    // This is the charger output current
-    if (length >= 6) {
-        int16_t battMa100 = extractSigned16(output, 4);
-        if (battMa100 != 0x7FFF) {
-            device.current = battMa100 / 10.0f;  // convert 100mA to A
-            device.hasCurrent = true;
-            
-            // Calculate power if we have both voltage and current
-            if (device.hasVoltage) {
-                device.power = device.voltage * device.current;
-                device.hasPower = true;
-            }
-        }
-    }
-    
-    // Yield Today (bytes 6-7, unsigned 16-bit, units: 10Wh = 0.01kWh)
-    if (length >= 8) {
-        uint16_t yieldWh10 = extractUnsigned16(output, 6);
-        if (yieldWh10 != 0xFFFF) {
-            device.yieldToday = yieldWh10 / 100.0f;  // convert 10Wh to kWh
-        }
-    }
-    
-    // PV Power (bytes 8-9, unsigned 16-bit, units: W)
-    // For chargers, this might represent input power or instantaneous charging power
-    if (length >= 10) {
-        uint16_t pvW = extractUnsigned16(output, 8);
-        if (pvW != 0xFFFF) {
-            device.pvPower = pvW;
-        }
-    }
-    
-    Serial.printf("BlueSmartCharger parsed: V=%.2f, A=%.2f, P=%.1fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
-                 device.voltage, device.current, device.power, device.yieldToday, 
                  device.deviceState, device.chargerError);
 }
 
