@@ -48,8 +48,9 @@ void WebConfigServer::begin() {
 void WebConfigServer::startWiFi() {
     Serial.println("Starting WiFi...");
     
-    // Disable persistent storage to avoid credential conflicts
-    // This prevents the ESP32 from storing WiFi credentials in flash
+    // Disable WiFi library's internal credential storage to avoid conflicts
+    // Note: WiFi settings are still persistent via the Preferences API (saveWiFiConfig/loadWiFiConfig)
+    // This only prevents the WiFi library from storing duplicate credentials that can cause issues
     WiFi.persistent(false);
     
     if (wifiConfig.apMode) {
