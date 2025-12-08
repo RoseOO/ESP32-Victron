@@ -1,6 +1,7 @@
 #include "WebConfigServer.h"
 #include "VictronBLE.h"
 #include "MQTTPublisher.h"
+#include <esp_wifi.h>
 
 WebConfigServer::WebConfigServer() : server(nullptr), serverStarted(false), filesystemMounted(false), victronBLE(nullptr), mqttPublisher(nullptr) {
 }
@@ -84,23 +85,30 @@ void WebConfigServer::startWiFi() {
         // Enable auto-reconnect for better connection stability (Station mode only)
         WiFi.setAutoReconnect(true);
         
-        // Disable WiFi power saving to prevent authentication issues
-        // This ensures the ESP32 stays awake during the authentication handshake
-        // Note: This increases power consumption but is necessary for reliable connections.
-        // The M5StickC PLUS2 is typically USB-powered, so this is acceptable.
-        WiFi.setSleep(false);
-        
         WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.password.c_str());
         
+        // Wait for connection with watchdog-friendly delays
         int attempts = 0;
         while (WiFi.status() != WL_CONNECTED && attempts < 20) {
             delay(500);
             Serial.print(".");
             attempts++;
+            // Yield to allow background tasks to run and prevent watchdog timeout
+            yield();
         }
         
         if (WiFi.status() == WL_CONNECTED) {
             Serial.println("\nWiFi connected!");
+            
+            // Disable WiFi power saving AFTER connection is established
+            // This ensures the ESP32 stays awake during operation and prevents
+            // authentication/connection issues. Must be called after WiFi.begin()
+            // succeeds to avoid potential boot loops.
+            // Note: This increases power consumption but is necessary for reliable connections.
+            // The M5StickC PLUS2 is typically USB-powered, so this is acceptable.
+            esp_wifi_set_ps(WIFI_PS_NONE);
+            Serial.println("WiFi power saving disabled");
+            
             Serial.print("IP address: ");
             Serial.println(WiFi.localIP());
         } else {
