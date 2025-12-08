@@ -123,7 +123,8 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
         return DEVICE_SMART_SHUNT;
     } else if (lowerName.indexOf("solar") >= 0 || lowerName.indexOf("mppt") >= 0) {
         return DEVICE_SMART_SOLAR;
-    } else if (lowerName.indexOf("charger") >= 0 || lowerName.indexOf("blue") >= 0) {
+    } else if ((lowerName.indexOf("blue") >= 0 && lowerName.indexOf("charger") >= 0) || 
+               lowerName.indexOf("smartcharger") >= 0 || lowerName.indexOf("smart charger") >= 0) {
         return DEVICE_BLUE_SMART_CHARGER;
     } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0 || 
                lowerName.indexOf("multiplus") >= 0 || lowerName.indexOf("quattro") >= 0) {
@@ -721,7 +722,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
         }
     }
     
-    Serial.printf("SolarController/Charger parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n", 
+    Serial.printf("%s parsed: V=%.2f, A=%.2f, PV=%.0fW, Yield=%.2fkWh, State=%d, Error=%d\n",
+                 (device.type == DEVICE_BLUE_SMART_CHARGER) ? "BlueSmartCharger" : "SolarController",
                  device.voltage, device.current, device.pvPower, device.yieldToday, 
                  device.deviceState, device.chargerError);
 }
