@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Critical: WiFi Boot Loop**: Fixed continuous boot loop caused by improper WiFi power management timing
+  - Moved `WiFi.setSleep(false)` equivalent to AFTER WiFi connection is established
+  - Changed from `WiFi.setSleep(false)` to `esp_wifi_set_ps(WIFI_PS_NONE)` for more reliable control
+  - Added `yield()` call in WiFi connection wait loop to prevent watchdog timeout
+  - Boot loop occurred after WiFi authentication fix was added in previous update
+  - Device now boots successfully and displays "Startup OK" without crashing
+  - WiFi power saving still disabled (as intended) but at the correct time in initialization
+  - Added comprehensive documentation in `docs/WIFI_BOOT_LOOP_FIX.md`
+
 ### Added
 - **Over-The-Air (OTA) Updates**: Wireless firmware updates without USB cable
   - ArduinoOTA integration for remote firmware uploads
