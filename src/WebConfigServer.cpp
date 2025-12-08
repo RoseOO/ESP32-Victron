@@ -48,6 +48,12 @@ void WebConfigServer::begin() {
 void WebConfigServer::startWiFi() {
     Serial.println("Starting WiFi...");
     
+    // Configure WiFi for optimal stability and connection reliability
+    // Disable persistent storage to avoid credential conflicts
+    WiFi.persistent(false);
+    // Enable auto-reconnect for better stability
+    WiFi.setAutoReconnect(true);
+    
     if (wifiConfig.apMode) {
         // Access Point mode
         Serial.println("Starting in AP mode...");
@@ -69,7 +75,17 @@ void WebConfigServer::startWiFi() {
     } else {
         // Station mode
         Serial.println("Connecting to WiFi...");
+        
+        // Ensure clean state before connecting
+        WiFi.disconnect(true);
+        delay(100);
+        
         WiFi.mode(WIFI_STA);
+        
+        // Disable WiFi power saving to prevent authentication issues
+        // This ensures the ESP32 stays awake during the authentication handshake
+        WiFi.setSleep(false);
+        
         WiFi.begin(wifiConfig.ssid.c_str(), wifiConfig.password.c_str());
         
         int attempts = 0;
@@ -86,6 +102,11 @@ void WebConfigServer::startWiFi() {
         } else {
             Serial.println("\nWiFi connection failed, falling back to AP mode");
             wifiConfig.apMode = true;
+            
+            // Disconnect and clean up before switching to AP mode
+            WiFi.disconnect(true);
+            delay(100);
+            
             WiFi.mode(WIFI_AP);
             
             bool apStarted = WiFi.softAP("Victron-Config", wifiConfig.apPassword.c_str());
