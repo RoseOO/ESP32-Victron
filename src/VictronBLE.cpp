@@ -119,19 +119,43 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
     String lowerName = name;
     lowerName.toLowerCase();
     
-    if (lowerName.indexOf("shunt") >= 0 || lowerName.indexOf("smartshunt") >= 0) {
+    // Priority order matters - check most specific patterns first
+    if (lowerName.indexOf("smartlithium") >= 0 || lowerName.indexOf("smart lithium") >= 0) {
+        return DEVICE_SMART_LITHIUM;
+    } else if (lowerName.indexOf("lynx") >= 0 && lowerName.indexOf("bms") >= 0) {
+        return DEVICE_LYNX_SMART_BMS;
+    } else if (lowerName.indexOf("battery protect") >= 0 || lowerName.indexOf("batteryprotect") >= 0) {
+        return DEVICE_SMART_BATTERY_PROTECT;
+    } else if (lowerName.indexOf("battery sense") >= 0 || lowerName.indexOf("batterysense") >= 0) {
+        return DEVICE_SMART_BATTERY_SENSE;
+    } else if (lowerName.indexOf("shunt") >= 0 || lowerName.indexOf("smartshunt") >= 0 || 
+               lowerName.indexOf("bmv") >= 0) {
         return DEVICE_SMART_SHUNT;
+    } else if (lowerName.indexOf("multi rs") >= 0 || lowerName.indexOf("multirs") >= 0) {
+        return DEVICE_MULTI_RS;
+    } else if (lowerName.indexOf("inverter rs") >= 0 || lowerName.indexOf("inverterrs") >= 0) {
+        return DEVICE_INVERTER_RS;
+    } else if (lowerName.indexOf("ve.bus") >= 0 || lowerName.indexOf("vebus") >= 0 ||
+               lowerName.indexOf("multiplus") >= 0 || lowerName.indexOf("quattro") >= 0) {
+        return DEVICE_VE_BUS;
     } else if (lowerName.indexOf("solar") >= 0 || lowerName.indexOf("mppt") >= 0) {
         return DEVICE_SMART_SOLAR;
-    } else if ((lowerName.indexOf("blue") >= 0 && lowerName.indexOf("charger") >= 0) || 
-               lowerName.indexOf("smartcharger") >= 0 || lowerName.indexOf("smart charger") >= 0) {
-        return DEVICE_BLUE_SMART_CHARGER;
-    } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0 || 
-               lowerName.indexOf("multiplus") >= 0 || lowerName.indexOf("quattro") >= 0) {
-        return DEVICE_INVERTER;
+    } else if (lowerName.indexOf("orion xs") >= 0) {
+        return DEVICE_ORION_XS;
     } else if (lowerName.indexOf("orion") >= 0 || lowerName.indexOf("dc-dc") >= 0 || 
-               lowerName.indexOf("dcdc") >= 0 || lowerName.indexOf("converter") >= 0) {
+               lowerName.indexOf("dcdc") >= 0 || lowerName.indexOf("buckboost") >= 0) {
         return DEVICE_DCDC_CONVERTER;
+    } else if ((lowerName.indexOf("blue") >= 0 && lowerName.indexOf("charger") >= 0) || 
+               lowerName.indexOf("smartcharger") >= 0 || lowerName.indexOf("smart charger") >= 0 ||
+               lowerName.indexOf("ip65") >= 0 || lowerName.indexOf("ip22") >= 0 || 
+               lowerName.indexOf("ip43") >= 0) {
+        return DEVICE_BLUE_SMART_CHARGER;
+    } else if (lowerName.indexOf("ac charger") >= 0 || lowerName.indexOf("accharger") >= 0) {
+        return DEVICE_AC_CHARGER;
+    } else if (lowerName.indexOf("energy meter") >= 0 || lowerName.indexOf("energymeter") >= 0) {
+        return DEVICE_DC_ENERGY_METER;
+    } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0) {
+        return DEVICE_INVERTER;
     }
     
     return DEVICE_UNKNOWN;
@@ -1034,22 +1058,28 @@ bool VictronBLE::getRetainLastData() const {
 // Helper function to convert device state to human-readable string
 String VictronBLE::deviceStateToString(int state) {
     switch (state) {
-        case 0: return "Off";
-        case 1: return "Low Power";
-        case 2: return "Fault";
-        case 3: return "Bulk";
-        case 4: return "Absorption";
-        case 5: return "Float";
-        case 6: return "Storage";
-        case 7: return "Equalize Manual";
-        case 9: return "Inverting";
-        case 11: return "Power Supply";
-        case 245: return "Starting Up";
-        case 246: return "Repeated Absorption";
-        case 247: return "Recondition";
-        case 248: return "Battery Safe";
-        case 249: return "Active";
-        case 252: return "External Control";
+        case STATE_OFF: return "Off";
+        case STATE_LOW_POWER: return "Low Power";
+        case STATE_FAULT: return "Fault";
+        case STATE_BULK: return "Bulk";
+        case STATE_ABSORPTION: return "Absorption";
+        case STATE_FLOAT: return "Float";
+        case STATE_STORAGE: return "Storage";
+        case STATE_EQUALIZE_MANUAL: return "Equalize Manual";
+        case STATE_PASSTHRU: return "Pass Through";
+        case STATE_INVERTING: return "Inverting";
+        case STATE_ASSISTING: return "Assisting";
+        case STATE_POWER_SUPPLY: return "Power Supply";
+        case STATE_SUSTAIN: return "Sustain";
+        case STATE_STARTING_UP: return "Starting Up";
+        case STATE_REPEATED_ABSORPTION: return "Repeated Absorption";
+        case STATE_AUTO_EQUALIZE: return "Auto Equalize";
+        case STATE_BATTERY_SAFE: return "Battery Safe";
+        case STATE_LOAD_DETECT: return "Load Detect";
+        case STATE_BLOCKED: return "Blocked";
+        case STATE_TEST: return "Test";
+        case STATE_EXTERNAL_CONTROL: return "External Control";
+        case STATE_NOT_AVAILABLE: return "N/A";
         default: return "Unknown (" + String(state) + ")";
     }
 }
@@ -1057,28 +1087,38 @@ String VictronBLE::deviceStateToString(int state) {
 // Helper function to convert charger error to human-readable string
 String VictronBLE::chargerErrorToString(int error) {
     switch (error) {
-        case 0: return "No error";
-        case 1: return "Battery temp too high";
-        case 2: return "Battery voltage too high";
-        case 3: return "Remote temp sensor failure";
-        case 11: return "Battery high ripple";
-        case 14: return "Battery temp too low";
-        case 17: return "Charger temp too high";
-        case 18: return "Charger over current";
-        case 20: return "Bulk time limit exceeded";
-        case 21: return "Current sensor issue";
-        case 26: return "Terminals overheated";
-        case 27: return "Charger short circuit";
-        case 28: return "Power stage issue";
-        case 29: return "Over-Charge protection";
-        case 33: return "PV over-voltage";
-        case 34: return "PV over-current";
-        case 65: return "Communication lost";
-        case 67: return "BMS connection lost";
-        case 114: return "CPU temperature too high";
-        case 116: return "Calibration data lost";
-        case 117: return "Invalid firmware";
-        case 119: return "Settings data lost";
+        case ERR_NO_ERROR: return "No error";
+        case ERR_TEMPERATURE_BATTERY_HIGH: return "Battery temp too high";
+        case ERR_VOLTAGE_HIGH: return "Battery voltage too high";
+        case ERR_REMOTE_TEMPERATURE_A: return "Remote temp sensor failure";
+        case ERR_REMOTE_BATTERY_A: return "Remote battery sense failure";
+        case ERR_HIGH_RIPPLE: return "Battery high ripple";
+        case ERR_TEMPERATURE_BATTERY_LOW: return "Battery temp too low";
+        case ERR_TEMPERATURE_CHARGER: return "Charger temp too high";
+        case ERR_OVER_CURRENT: return "Charger over current";
+        case ERR_POLARITY: return "Current polarity reversed";
+        case ERR_BULK_TIME: return "Bulk time limit exceeded";
+        case ERR_CURRENT_SENSOR: return "Current sensor issue";
+        case ERR_INTERNAL_TEMPERATURE: return "Internal temp sensor failure";
+        case ERR_FAN: return "Fan failure";
+        case ERR_OVERHEATED: return "Terminals overheated";
+        case ERR_SHORT_CIRCUIT: return "Charger short circuit";
+        case ERR_CONVERTER_ISSUE: return "Power stage issue";
+        case ERR_OVER_CHARGE: return "Over-Charge protection";
+        case ERR_INPUT_VOLTAGE: return "PV over-voltage";
+        case ERR_INPUT_CURRENT: return "PV over-current";
+        case ERR_INPUT_POWER: return "PV over-power";
+        case ERR_INPUT_SHUTDOWN_VOLTAGE: return "Input shutdown (voltage)";
+        case ERR_INVERTER_SHUTDOWN: return "Inverter shutdown";
+        case ERR_INVERTER_OVERLOAD: return "Inverter overload";
+        case ERR_INVERTER_TEMPERATURE: return "Inverter temperature";
+        case ERR_BMS: return "BMS connection lost";
+        case ERR_NETWORK: return "Network misconfigured";
+        case ERR_CPU_TEMPERATURE: return "CPU temperature too high";
+        case ERR_CALIBRATION_LOST: return "Calibration data lost";
+        case ERR_FIRMWARE: return "Invalid firmware";
+        case ERR_SETTINGS: return "Settings data lost";
+        case ERR_NOT_AVAILABLE: return "N/A";
         default: return "Error " + String(error);
     }
 }

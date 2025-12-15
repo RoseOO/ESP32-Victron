@@ -533,6 +533,36 @@ void drawDisplay() {
             case DEVICE_DCDC_CONVERTER:
                 M5.Lcd.print("DC-DC Converter");
                 break;
+            case DEVICE_SMART_LITHIUM:
+                M5.Lcd.print("SmartLithium");
+                break;
+            case DEVICE_INVERTER_RS:
+                M5.Lcd.print("Inverter RS");
+                break;
+            case DEVICE_AC_CHARGER:
+                M5.Lcd.print("AC Charger");
+                break;
+            case DEVICE_SMART_BATTERY_PROTECT:
+                M5.Lcd.print("Battery Protect");
+                break;
+            case DEVICE_LYNX_SMART_BMS:
+                M5.Lcd.print("Lynx Smart BMS");
+                break;
+            case DEVICE_MULTI_RS:
+                M5.Lcd.print("Multi RS");
+                break;
+            case DEVICE_VE_BUS:
+                M5.Lcd.print("VE.Bus");
+                break;
+            case DEVICE_DC_ENERGY_METER:
+                M5.Lcd.print("Energy Meter");
+                break;
+            case DEVICE_ORION_XS:
+                M5.Lcd.print("Orion XS");
+                break;
+            case DEVICE_SMART_BATTERY_SENSE:
+                M5.Lcd.print("Battery Sense");
+                break;
             default:
                 M5.Lcd.print("Victron Device");
                 break;

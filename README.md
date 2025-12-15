@@ -8,8 +8,9 @@ A M5StickC PLUS2 based Bluetooth Low Energy (BLE) monitor for Victron Energy dev
 
 ## Documentation
 
+- **[Device Support Comparison](DEVICE_SUPPORT_COMPARISON.md)** - Comprehensive device support details (NEW!)
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 10 minutes
-- **[OTA Updates Guide](docs/OTA_UPDATES.md)** - Wireless firmware updates (NEW!)
+- **[OTA Updates Guide](docs/OTA_UPDATES.md)** - Wireless firmware updates
 - **[Filesystem Upload Guide](docs/FILESYSTEM_UPLOAD.md)** - Upload web interface files to ESP32 flash
 - **[Web Configuration Guide](docs/WEB_CONFIGURATION.md)** - Configure devices and encryption keys via web interface
 - **[Data Retention Feature](docs/DATA_RETENTION.md)** - Keep displaying last valid data during temporary issues
@@ -55,12 +56,23 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Configure MQTT broker via web interface
   - Supports authentication
   - Configurable publish intervals
-- **Multi-Device Support**: Connect to and monitor multiple Victron devices:
-  - Smart Shunt (Battery Monitor)
-  - Smart Solar MPPT Controllers
-  - Blue Smart Chargers
-  - Inverters (Phoenix, MultiPlus, Quattro)
-  - DC-DC Converters (Orion, etc.)
+- **Multi-Device Support**: Connect to and monitor multiple Victron devices (15+ device types):
+  - Smart Shunt / BMV (Battery Monitor)
+  - SmartSolar MPPT Controllers (all models)
+  - Blue Smart Chargers (IP65, IP22, IP43)
+  - Inverters (Phoenix)
+  - DC-DC Converters (Orion, BuckBoost)
+  - SmartLithium Batteries
+  - Inverter RS
+  - AC Chargers (multi-output)
+  - Smart Battery Protect
+  - Lynx Smart BMS
+  - Multi RS
+  - VE.Bus (MultiPlus, Quattro)
+  - DC Energy Meter
+  - Orion XS
+  - Smart Battery Sense
+  - See [DEVICE_SUPPORT_COMPARISON.md](DEVICE_SUPPORT_COMPARISON.md) for complete details
 - **Real-Time Monitoring**: Display live data including:
   - Battery/Solar Voltage (V)
   - Current Draw/Charge (A)
