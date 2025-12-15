@@ -100,14 +100,13 @@ void WebConfigServer::startWiFi() {
         if (WiFi.status() == WL_CONNECTED) {
             Serial.println("\nWiFi connected!");
             
-            // Disable WiFi power saving AFTER connection is established
-            // This ensures the ESP32 stays awake during operation and prevents
-            // authentication/connection issues. Must be called after WiFi.begin()
-            // succeeds to avoid potential boot loops.
-            // Note: This increases power consumption but is necessary for reliable connections.
-            // The M5StickC PLUS2 is typically USB-powered, so this is acceptable.
-            esp_wifi_set_ps(WIFI_PS_NONE);
-            Serial.println("WiFi power saving disabled");
+            // Set WiFi to minimum modem sleep mode when both WiFi and BLE are enabled
+            // This is REQUIRED by ESP32 when using WiFi + BLE simultaneously to avoid boot loops
+            // WIFI_PS_MIN_MODEM allows the modem to sleep between DTIM beacons while keeping
+            // WiFi connected and is compatible with BLE operation.
+            // Note: WIFI_PS_NONE would cause "Should enable WiFi modem sleep" error and crash.
+            esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+            Serial.println("WiFi modem sleep set to MIN_MODEM (required for WiFi+BLE)");
             
             Serial.print("IP address: ");
             Serial.println(WiFi.localIP());
