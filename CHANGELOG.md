@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Device Support Enhancement**: Expanded device support from 5 to 15+ device types
+  - Added 10 new device types: SmartLithium, Inverter RS, AC Charger, Smart Battery Protect, Lynx Smart BMS, Multi RS, VE.Bus, DC Energy Meter, Orion XS, Smart Battery Sense
+  - Added 60+ Product ID definitions for precise device identification (BMV, SmartShunt, SmartSolar, Phoenix, etc.)
+  - Added VictronDeviceState enum with 20+ states (Off, Bulk, Float, Inverting, etc.)
+  - Added VictronChargerError enum with 30+ error codes with descriptions
+  - Added VictronAlarmReason flags for comprehensive alarm tracking
+  - Enhanced device identification algorithm with priority-based pattern matching
+  - Extended VictronDeviceData structure with device-specific fields (cell voltages, BMS flags, multi-output support)
+  - Updated display integration to show all 15 device types
+  - Created comprehensive DEVICE_SUPPORT_COMPARISON.md documentation
+  - Based on [esphome-victron_ble](https://github.com/Fabian-Schmidt/esphome-victron_ble) reference implementation
+
 ### Fixed
 - **Critical: WiFi Boot Loop**: Fixed continuous boot loop caused by improper WiFi power management timing
   - Moved `WiFi.setSleep(false)` equivalent to AFTER WiFi connection is established
