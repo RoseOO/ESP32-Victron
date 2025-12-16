@@ -48,13 +48,39 @@ void VictronBLE::begin() {
 }
 
 void VictronBLE::scan(int duration) {
-    Serial.println("Scanning for Victron devices...");
+    Serial.println("Scanning for Victron and Eco Worthy devices...");
     
     NimBLEScanResults foundDevices = pBLEScan->start(duration, false);
     
     for (int i = 0; i < foundDevices.getCount(); i++) {
         NimBLEAdvertisedDevice device = foundDevices.getDevice(i);
+        String deviceName = device.getName().c_str();
         
+        // Check for Eco Worthy devices (these don't use manufacturer data the same way)
+        if (deviceName.startsWith("ECO-WORTHY") || 
+            deviceName.startsWith("DCHOUSE") ||
+            deviceName.indexOf("ECO-WORTHY 02_") >= 0) {
+            // Create a placeholder entry for Eco Worthy device
+            // Actual data will be read via GATT connection separately
+            VictronDeviceData devData;
+            devData.name = deviceName;
+            devData.address = device.getAddress().toString().c_str();
+            devData.rssi = device.getRSSI();
+            devData.lastUpdate = millis();
+            devData.type = DEVICE_ECO_WORTHY_BMS;
+            devData.dataValid = false;  // Will be populated via GATT connection
+            
+            // Add or update in device list
+            devices[devData.address] = devData;
+            
+            Serial.printf("Eco Worthy Device: %s (%s) RSSI: %d\n", 
+                devData.name.c_str(), 
+                devData.address.c_str(), 
+                devData.rssi);
+            continue;
+        }
+        
+        // Handle Victron devices (original logic)
         if (device.haveManufacturerData()) {
             std::string mfgData = device.getManufacturerData();
             
@@ -114,7 +140,7 @@ void VictronBLE::scan(int duration) {
     }
     
     pBLEScan->clearResults();
-    Serial.printf("Found %d Victron device(s)\n", devices.size());
+    Serial.printf("Found %d device(s) total\n", devices.size());
 }
 
 VictronDeviceType VictronBLE::identifyDeviceType(const String& name, uint16_t modelId) {
