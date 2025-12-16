@@ -93,8 +93,7 @@ private:
     void extractCellVoltages(const uint8_t* data, size_t length);
     void extractTemperatures(const uint8_t* data, size_t length);
     
-    // BLE callback
-    static void notifyCallback(NimBLERemoteCharacteristic* pCharacteristic, uint8_t* pData, size_t length, bool isNotify);
+
     
 public:
     EcoWorthyBMS();

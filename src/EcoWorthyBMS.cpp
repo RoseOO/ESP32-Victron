@@ -1,8 +1,5 @@
 #include "EcoWorthyBMS.h"
 
-// Static instance pointer for callback
-static EcoWorthyBMS* callbackInstance = nullptr;
-
 EcoWorthyBMS::EcoWorthyBMS() : 
     pClient(nullptr),
     pService(nullptr),
@@ -19,7 +16,6 @@ EcoWorthyBMS::EcoWorthyBMS() :
     memset(macBytes, 0, sizeof(macBytes));
     memset(dataA1, 0, sizeof(dataA1));
     memset(dataA2, 0, sizeof(dataA2));
-    callbackInstance = this;
 }
 
 EcoWorthyBMS::~EcoWorthyBMS() {
@@ -262,9 +258,9 @@ bool EcoWorthyBMS::parseDataA1(const uint8_t* data, size_t length) {
     // Current (offset 22, 2 bytes, signed, in 0.01A or 0.1A depending on version)
     if (length >= 24) {
         int16_t currentRaw = (int16_t)(data[22] | (data[23] << 8));
-        // Try to detect version: if data starts with 0xA1, it's V1 (0.01A), otherwise V2 (0.1A)
-        bool isV1 = (length > 0 && data[0] == HEAD_A1);
-        currentData.current = isV1 ? (currentRaw / 100.0) : (currentRaw / 10.0);
+        // Note: Version detection would require header info from parent parseResponse()
+        // For now, use 0.01A as default (V1 protocol)
+        currentData.current = currentRaw / 100.0;
     }
     
     // Design capacity (offset 26, 2 bytes, in 0.01Ah, convert to Ah)
@@ -274,7 +270,7 @@ bool EcoWorthyBMS::parseDataA1(const uint8_t* data, size_t length) {
     }
     
     // Problem code (offset 51, 2 bytes)
-    if (length >= 53) {
+    if (length > 52) {
         currentData.problemCode = data[51] | (data[52] << 8);
     }
     

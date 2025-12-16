@@ -1330,8 +1330,15 @@ void loop() {
         for (const auto& address : deviceAddresses) {
             VictronDeviceData* device = victron->getDevice(address);
             if (device && device->type == DEVICE_ECO_WORTHY_BMS) {
+                // Check if we need to connect to this device
+                bool needsConnection = !ecoWorthy->isDeviceConnected();
+                if (!needsConnection) {
+                    EcoWorthyBMSData* currentEcoData = ecoWorthy->getData();
+                    needsConnection = (currentEcoData->address != address);
+                }
+                
                 // Try to connect and read data from Eco Worthy BMS
-                if (!ecoWorthy->isDeviceConnected() || ecoWorthy->getData()->address != address) {
+                if (needsConnection) {
                     Serial.printf("Connecting to Eco Worthy BMS: %s\n", address.c_str());
                     ecoWorthy->disconnect();  // Disconnect any previous device
                     if (ecoWorthy->connectToAddress(address)) {
