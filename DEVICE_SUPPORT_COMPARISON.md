@@ -26,6 +26,8 @@ ESP32-Victron now supports a comprehensive range of Victron Energy devices, clos
 | **Orion XS** | ✅ New | ✅ Full | Advanced DC-DC charger |
 | **Smart Battery Sense** | ✅ New | ✅ Full | Temperature and voltage sensor |
 | **GX Device** | ❌ | ❌ | Awaiting documentation |
+| | | | |
+| **Eco Worthy BMS** | ✅ New | N/A | Battery BMS with BW02 adapter (non-Victron) |
 
 ## Enhanced Features
 
@@ -96,6 +98,15 @@ Battery monitor alarm flags:
 - Input/output voltage and current
 - Off-reason tracking
 - Device state monitoring
+
+### Eco Worthy Battery BMS (New)
+- Battery voltage, current, and power
+- State of charge (SOC) and battery health
+- Individual cell voltage monitoring (up to 16 cells)
+- Temperature monitoring (up to 4 sensors)
+- Design capacity and problem code tracking
+- Requires BW02 BLE adapter
+- Compatible with DCHOUSE batteries
 
 ## Technical Improvements
 

@@ -1323,11 +1323,48 @@ void loop() {
         Serial.println("Periodic scan...");
         victron->scan(2);  // Quick 2-second scan
         
-        // Also scan for Eco Worthy devices
-        // Note: Eco Worthy devices will be discovered during the same scan
-        // but require connection to read data (handled separately)
-        
+        // Update device list based on scan results
         updateDeviceList();
+        
+        // For Eco Worthy devices, try to connect and read data
+        for (const auto& address : deviceAddresses) {
+            VictronDeviceData* device = victron->getDevice(address);
+            if (device && device->type == DEVICE_ECO_WORTHY_BMS) {
+                // Try to connect and read data from Eco Worthy BMS
+                if (!ecoWorthy->isDeviceConnected() || ecoWorthy->getData()->address != address) {
+                    Serial.printf("Connecting to Eco Worthy BMS: %s\n", address.c_str());
+                    ecoWorthy->disconnect();  // Disconnect any previous device
+                    if (ecoWorthy->connectToAddress(address)) {
+                        Serial.println("Successfully connected to Eco Worthy BMS");
+                        if (ecoWorthy->updateData()) {
+                            // Copy data from EcoWorthyBMS to VictronDeviceData
+                            EcoWorthyBMSData* ecoData = ecoWorthy->getData();
+                            device->voltage = ecoData->voltage;
+                            device->current = ecoData->current;
+                            device->power = ecoData->power;
+                            device->batterySOC = ecoData->batteryLevel;
+                            device->dataValid = ecoData->dataValid;
+                            device->lastUpdate = ecoData->lastUpdate;
+                            device->hasVoltage = true;
+                            device->hasCurrent = true;
+                            device->hasPower = true;
+                            device->hasSOC = true;
+                            
+                            // Set temperature if available
+                            if (ecoData->tempSensorCount > 0) {
+                                device->temperature = ecoData->temperatures[0];
+                                device->hasTemperature = true;
+                            }
+                            
+                            Serial.println("Successfully updated Eco Worthy BMS data");
+                        }
+                    } else {
+                        Serial.println("Failed to connect to Eco Worthy BMS");
+                    }
+                }
+            }
+        }
+        
         lastScanTime = currentTime;
         scanning = false;
         
