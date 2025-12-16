@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Eco Worthy Battery BMS Support**: Added support for Eco Worthy Battery BMS with BW02 adapter
+  - Automatic detection of Eco Worthy and DCHOUSE devices
+  - Battery voltage, current, power monitoring
+  - State of charge (SOC) and battery health tracking
+  - Individual cell voltage monitoring (up to 16 cells)
+  - Temperature monitoring (up to 4 sensors)
+  - Design capacity and problem code tracking
+  - BLE GATT connection-based communication
+  - Modbus CRC validation for data integrity
+  - Based on reference implementation from https://github.com/patman15/BMS_BLE-HA
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

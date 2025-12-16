@@ -8,11 +8,13 @@
 // Add the project headers that define the classes/types used below.
 // Adjust filenames if your headers use different names/paths.
 #include "VictronBLE.h"
+#include "EcoWorthyBMS.h"
 #include "WebConfigServer.h"
 #include "MQTTPublisher.h"
 
 // change globals to pointers to avoid constructor-side effects
 VictronBLE *victron = nullptr;
+EcoWorthyBMS *ecoWorthy = nullptr;
 WebConfigServer *webServer = nullptr;
 MQTTPublisher *mqttPublisher = nullptr;
 
@@ -215,8 +217,9 @@ void setup() {
     loadLCDConfig();
 
     // instantiate objects (no heavy init in constructors)
-    Serial.println("STARTUP: new VictronBLE/WebConfigServer/MQTTPublisher");
+    Serial.println("STARTUP: new VictronBLE/EcoWorthyBMS/WebConfigServer/MQTTPublisher");
     victron = new VictronBLE();
+    ecoWorthy = new EcoWorthyBMS();
     webServer = new WebConfigServer();
     mqttPublisher = new MQTTPublisher();
     Serial.println("STARTUP: allocations done");
@@ -241,6 +244,11 @@ void setup() {
     Serial.println("STARTUP: attempting victron->begin()");
     victron->begin();
     Serial.println("STARTUP: victron->begin() returned");
+    
+    // Initialize Eco Worthy BMS (uses same NimBLE stack)
+    Serial.println("STARTUP: attempting ecoWorthy->begin()");
+    ecoWorthy->begin();
+    Serial.println("STARTUP: ecoWorthy->begin() returned");
     
     // Apply data retention setting to VictronBLE
     victron->setRetainLastData(retainLastData);
@@ -562,6 +570,9 @@ void drawDisplay() {
                 break;
             case DEVICE_SMART_BATTERY_SENSE:
                 M5.Lcd.print("Battery Sense");
+                break;
+            case DEVICE_ECO_WORTHY_BMS:
+                M5.Lcd.print("Eco Worthy BMS");
                 break;
             default:
                 M5.Lcd.print("Victron Device");
@@ -1311,7 +1322,56 @@ void loop() {
         scanning = true;
         Serial.println("Periodic scan...");
         victron->scan(2);  // Quick 2-second scan
+        
+        // Update device list based on scan results
         updateDeviceList();
+        
+        // For Eco Worthy devices, try to connect and read data
+        for (const auto& address : deviceAddresses) {
+            VictronDeviceData* device = victron->getDevice(address);
+            if (device && device->type == DEVICE_ECO_WORTHY_BMS) {
+                // Check if we need to connect to this device
+                bool needsConnection = !ecoWorthy->isDeviceConnected();
+                if (!needsConnection) {
+                    EcoWorthyBMSData* currentEcoData = ecoWorthy->getData();
+                    needsConnection = (currentEcoData->address != address);
+                }
+                
+                // Try to connect and read data from Eco Worthy BMS
+                if (needsConnection) {
+                    Serial.printf("Connecting to Eco Worthy BMS: %s\n", address.c_str());
+                    ecoWorthy->disconnect();  // Disconnect any previous device
+                    if (ecoWorthy->connectToAddress(address)) {
+                        Serial.println("Successfully connected to Eco Worthy BMS");
+                        if (ecoWorthy->updateData()) {
+                            // Copy data from EcoWorthyBMS to VictronDeviceData
+                            EcoWorthyBMSData* ecoData = ecoWorthy->getData();
+                            device->voltage = ecoData->voltage;
+                            device->current = ecoData->current;
+                            device->power = ecoData->power;
+                            device->batterySOC = ecoData->batteryLevel;
+                            device->dataValid = ecoData->dataValid;
+                            device->lastUpdate = ecoData->lastUpdate;
+                            device->hasVoltage = true;
+                            device->hasCurrent = true;
+                            device->hasPower = true;
+                            device->hasSOC = true;
+                            
+                            // Set temperature if available
+                            if (ecoData->tempSensorCount > 0) {
+                                device->temperature = ecoData->temperatures[0];
+                                device->hasTemperature = true;
+                            }
+                            
+                            Serial.println("Successfully updated Eco Worthy BMS data");
+                        }
+                    } else {
+                        Serial.println("Failed to connect to Eco Worthy BMS");
+                    }
+                }
+            }
+        }
+        
         lastScanTime = currentTime;
         scanning = false;
         

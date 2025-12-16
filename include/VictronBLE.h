@@ -42,7 +42,8 @@ enum VictronDeviceType {
     DEVICE_VE_BUS = 12,              // VE.Bus (MultiPlus, Quattro)
     DEVICE_DC_ENERGY_METER = 13,     // DC Energy Meter
     DEVICE_ORION_XS = 14,            // Orion XS DC-DC Charger
-    DEVICE_SMART_BATTERY_SENSE = 15  // Smart Battery Sense
+    DEVICE_SMART_BATTERY_SENSE = 15, // Smart Battery Sense
+    DEVICE_ECO_WORTHY_BMS = 16       // Eco Worthy Battery BMS (BW02 adapter)
 };
 
 // Victron Product IDs (Model IDs) - comprehensive list from reference implementation

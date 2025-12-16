@@ -56,22 +56,26 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Configure MQTT broker via web interface
   - Supports authentication
   - Configurable publish intervals
-- **Multi-Device Support**: Connect to and monitor multiple Victron devices (15+ device types):
-  - Smart Shunt / BMV (Battery Monitor)
-  - SmartSolar MPPT Controllers (all models)
-  - Blue Smart Chargers (IP65, IP22, IP43)
-  - Inverters (Phoenix)
-  - DC-DC Converters (Orion, BuckBoost)
-  - SmartLithium Batteries
-  - Inverter RS
-  - AC Chargers (multi-output)
-  - Smart Battery Protect
-  - Lynx Smart BMS
-  - Multi RS
-  - VE.Bus (MultiPlus, Quattro)
-  - DC Energy Meter
-  - Orion XS
-  - Smart Battery Sense
+- **Multi-Device Support**: Connect to and monitor multiple devices (16+ device types):
+  - **Victron Energy Devices:**
+    - Smart Shunt / BMV (Battery Monitor)
+    - SmartSolar MPPT Controllers (all models)
+    - Blue Smart Chargers (IP65, IP22, IP43)
+    - Inverters (Phoenix)
+    - DC-DC Converters (Orion, BuckBoost)
+    - SmartLithium Batteries
+    - Inverter RS
+    - AC Chargers (multi-output)
+    - Smart Battery Protect
+    - Lynx Smart BMS
+    - Multi RS
+    - VE.Bus (MultiPlus, Quattro)
+    - DC Energy Meter
+    - Orion XS
+    - Smart Battery Sense
+  - **Other BMS Devices:**
+    - **Eco Worthy Battery BMS** (with BW02 adapter) - *New!*
+    - DCHOUSE batteries (compatible with Eco Worthy protocol)
   - See [DEVICE_SUPPORT_COMPARISON.md](DEVICE_SUPPORT_COMPARISON.md) for complete details
 - **Real-Time Monitoring**: Display live data including:
   - Battery/Solar Voltage (V)
@@ -100,6 +104,9 @@ For detailed instructions, see the **[Quick Start Guide](QUICKSTART.md)**.
   - Phoenix Inverters with VE.Direct Bluetooth Smart dongle
   - MultiPlus/Quattro Inverters with VE.Direct Bluetooth Smart dongle
   - Orion DC-DC Converters with Bluetooth
+- **Eco Worthy Battery BMS** with BW02 BLE adapter
+  - 100Ah, 200Ah, and other capacity batteries
+  - DCHOUSE batteries (compatible protocol)
 
 ## Victron BLE Protocol
 
