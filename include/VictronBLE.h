@@ -362,7 +362,7 @@ private:
     NimBLEScan* pBLEScan;
     bool retainLastData;  // Flag to retain last good data when parsing fails
     
-    VictronDeviceType identifyDeviceType(const String& name);
+    VictronDeviceType identifyDeviceType(const String& name, uint16_t modelId = 0);
     bool parseVictronAdvertisement(const uint8_t* data, size_t length, VictronDeviceData& device, const String& encryptionKey);
     bool decryptData(const uint8_t* encryptedData, size_t length, uint8_t* decryptedData, const String& key);
     float decodeValue(const uint8_t* data, int len, float scale);

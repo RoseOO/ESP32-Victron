@@ -66,7 +66,6 @@ void VictronBLE::scan(int duration) {
                     devData.name = device.getName().c_str();
                     devData.address = device.getAddress().toString().c_str();
                     devData.rssi = device.getRSSI();
-                    devData.type = identifyDeviceType(devData.name);
                     devData.lastUpdate = millis();
                     
                     // Store raw manufacturer data for debug purposes
@@ -80,6 +79,9 @@ void VictronBLE::scan(int duration) {
                     if (mfgData.length() >= 4) {
                         devData.modelId = (uint8_t)mfgData[2] | ((uint8_t)mfgData[3] << 8);
                     }
+                    
+                    // Identify device type - first by name, then by model ID if unknown
+                    devData.type = identifyDeviceType(devData.name, devData.modelId);
                     
                     // Check if encrypted (byte 4 indicates readout type/encryption)
                     if (mfgData.length() >= 5) {
@@ -115,7 +117,7 @@ void VictronBLE::scan(int duration) {
     Serial.printf("Found %d Victron device(s)\n", devices.size());
 }
 
-VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
+VictronDeviceType VictronBLE::identifyDeviceType(const String& name, uint16_t modelId) {
     String lowerName = name;
     lowerName.toLowerCase();
     
@@ -148,7 +150,7 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
     } else if ((lowerName.indexOf("blue") >= 0 && lowerName.indexOf("charger") >= 0) || 
                lowerName.indexOf("smartcharger") >= 0 || lowerName.indexOf("smart charger") >= 0 ||
                lowerName.indexOf("ip65") >= 0 || lowerName.indexOf("ip22") >= 0 || 
-               lowerName.indexOf("ip43") >= 0) {
+               lowerName.indexOf("ip43") >= 0 || lowerName.indexOf("potalance") >= 0) {
         return DEVICE_BLUE_SMART_CHARGER;
     } else if (lowerName.indexOf("ac charger") >= 0 || lowerName.indexOf("accharger") >= 0) {
         return DEVICE_AC_CHARGER;
@@ -156,6 +158,32 @@ VictronDeviceType VictronBLE::identifyDeviceType(const String& name) {
         return DEVICE_DC_ENERGY_METER;
     } else if (lowerName.indexOf("inverter") >= 0 || lowerName.indexOf("phoenix") >= 0) {
         return DEVICE_INVERTER;
+    }
+    
+    // If name-based detection failed, try model ID-based detection
+    if (modelId != 0) {
+        // SmartShunt and BMV model IDs (0xA380-0xA38F range)
+        if ((modelId >= 0xA380 && modelId <= 0xA38F) || 
+            (modelId >= 0x0203 && modelId <= 0x0205)) {
+            return DEVICE_SMART_SHUNT;
+        }
+        // Solar MPPT model IDs (0xA050-0xA06F range)
+        else if (modelId >= 0xA050 && modelId <= 0xA06F) {
+            return DEVICE_SMART_SOLAR;
+        }
+        // Phoenix Inverter model IDs (0xA200-0xA2FF range)
+        else if (modelId >= 0xA200 && modelId <= 0xA2FF) {
+            return DEVICE_INVERTER;
+        }
+        // Phoenix Smart IP43 Charger model IDs (0xA340-0xA34F range)
+        // Also includes model ID 0x0010 which appears to be a Blue Smart Charger variant
+        else if ((modelId >= 0xA340 && modelId <= 0xA34F) || modelId == 0x0010) {
+            return DEVICE_BLUE_SMART_CHARGER;
+        }
+        // Orion/DC-DC model IDs (0xA3F0-0xA3FF range)
+        else if (modelId >= 0xA3F0 && modelId <= 0xA3FF) {
+            return DEVICE_DCDC_CONVERTER;
+        }
     }
     
     return DEVICE_UNKNOWN;
@@ -681,6 +709,13 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
     // Parse whatever fields are available based on actual data length
     // Each field is only parsed if we have enough bytes for it
     
+    // Debug: Print raw payload bytes
+    Serial.printf("Raw charger payload (%d bytes): ", length);
+    for (size_t i = 0; i < length && i < 16; i++) {
+        Serial.printf("%02X ", output[i]);
+    }
+    Serial.println();
+    
     // Device State (byte 0)
     if (length >= 1) {
         device.deviceState = output[0];
@@ -694,6 +729,8 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
     // Battery Voltage (bytes 2-3, signed 16-bit, units: 10mV)
     if (length >= 4) {
         int16_t battMv10 = extractSigned16(output, 2);
+        Serial.printf("Debug: Voltage bytes [2-3]: %02X %02X -> raw value: %d (0x%04X) -> %.2fV\n",
+                     output[2], output[3], battMv10, (uint16_t)battMv10, battMv10 / 100.0f);
         if (battMv10 != 0x7FFF) {
             float voltage = battMv10 / 100.0f;  // convert 10mV to V
             if (!validateVoltage(voltage, "SolarController", device)) {
@@ -705,11 +742,22 @@ void VictronBLE::parseSolarControllerData(const uint8_t* output, size_t length, 
     }
     
     // Battery Current (bytes 4-5, signed 16-bit, units: 100mA)
+    // Both Solar Controllers and Blue Smart Chargers use SIGNED current
     if (length >= 6) {
         int16_t battMa100 = extractSigned16(output, 4);
+        Serial.printf("Debug: Current bytes [4-5]: %02X %02X -> raw value: %d (0x%04X) -> %.2fA\n",
+                     output[4], output[5], battMa100, (uint16_t)battMa100, battMa100 / 10.0f);
         if (battMa100 != 0x7FFF) {
             device.current = battMa100 / 10.0f;  // convert 100mA to A
             device.hasCurrent = true;
+            
+            // Sanity check: If current seems unrealistic (>100A or <-100A), encryption key is likely wrong
+            if (device.current > 100.0f || device.current < -100.0f) {
+                device.dataValid = false;
+                device.errorMessage = "Invalid current reading - check encryption key";
+                Serial.printf("ERROR: Unrealistic current %.2fA detected - encryption key is likely incorrect\n", device.current);
+                return;
+            }
             
             // Calculate power if we have both voltage and current
             if (device.hasVoltage) {
